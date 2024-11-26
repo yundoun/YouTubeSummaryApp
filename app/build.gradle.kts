@@ -95,6 +95,7 @@ dependencies {
     implementation(libs.retrofit.kotlin.serialization)
     implementation(libs.okhttp.core)
     implementation(libs.okhttp.logging)
+    implementation(libs.retrofit.converter.gson)
 
     // Room
     implementation(libs.room.runtime)
@@ -109,6 +110,8 @@ dependencies {
     implementation(libs.coil.compose)
 
     implementation(libs.kotlinx.datetime)
+
+    implementation(libs.androidx.datastore.preferences)
 
     // Testing
     testImplementation(libs.junit)

@@ -1,4 +1,73 @@
 package com.example.youtube_summary_native.core.data.repository
 
-class SummaryRepositoryImpl {
+import com.example.youtube_summary_native.core.data.remote.api.SummaryApi
+import com.example.youtube_summary_native.core.data.remote.websocket.WebSocketManager
+import com.example.youtube_summary_native.core.domain.model.summary.AllSummaries
+import com.example.youtube_summary_native.core.domain.model.summary.SummaryResponse
+import com.example.youtube_summary_native.core.domain.repository.SummaryRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import javax.inject.Inject
+
+class SummaryRepositoryImpl @Inject constructor(
+    private val summaryApi: SummaryApi,
+    private val webSocketManager: WebSocketManager
+) : SummaryRepository {
+
+    private val _webSocketMessages = MutableSharedFlow<Pair<String, String>>()
+    override val webSocketMessages: Flow<Pair<String, String>> = _webSocketMessages
+
+    override suspend fun getSummaryInfoAll(username: String?): AllSummaries {
+        return try {
+            summaryApi.getSummaryInfoAll(username)
+        } catch (e: Exception) {
+            throw Exception("Failed to load all summaries: ${e.message}")
+        }
+    }
+
+    override suspend fun getSummaryInfo(videoId: String): SummaryResponse {
+        return try {
+            summaryApi.getSummaryInfo(videoId)
+        } catch (e: Exception) {
+            throw Exception("Failed to load summary info: ${e.message}")
+        }
+    }
+
+    override suspend fun postSummaryInfo(keyUrl: String, username: String?): SummaryResponse {
+        return try {
+            summaryApi.postSummaryInfo(keyUrl, username)
+        } catch (e: Exception) {
+            throw Exception("Failed to post summary info: ${e.message}")
+        }
+    }
+
+    override suspend fun deleteSummaryInfo(videoId: String, username: String?): String {
+        return try {
+            summaryApi.deleteSummaryInfo(videoId, username)
+        } catch (e: Exception) {
+            throw Exception("Failed to delete summary info: ${e.message}")
+        }
+    }
+
+    override suspend fun deleteSummaryInfoAll(): String {
+        return try {
+            summaryApi.deleteSummaryInfoAll()
+        } catch (e: Exception) {
+            throw Exception("Failed to delete all summaries: ${e.message}")
+        }
+    }
+
+    override fun connectToWebSocket() {
+        webSocketManager.connect { type, data ->
+            _webSocketMessages.tryEmit(Pair(type, data))
+        }
+    }
+
+    override fun sendWebSocketMessage(message: String) {
+        webSocketManager.sendMessage(message)
+    }
+
+    override fun closeWebSocket() {
+        webSocketManager.close()
+    }
 }

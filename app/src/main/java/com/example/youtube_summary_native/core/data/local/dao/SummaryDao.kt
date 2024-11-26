@@ -5,6 +5,8 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
+import androidx.room.Update
 import com.example.youtube_summary_native.core.data.local.entity.SummaryEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -17,17 +19,39 @@ interface SummaryDao {
     suspend fun getSummaryById(videoId: String): SummaryEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertSummary(summary: SummaryEntity)
+    suspend fun insertSummary(summary: SummaryEntity): Long
 
+    @Update
+    suspend fun updateSummary(summary: SummaryEntity): Int
+
+    @Transaction
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSummaries(summaries: List<SummaryEntity>)
 
-    @Delete
-    suspend fun deleteSummary(summary: SummaryEntity)
-
     @Query("DELETE FROM summaries WHERE videoId = :videoId")
-    suspend fun deleteSummaryById(videoId: String)
+    suspend fun deleteSummary(videoId: String): Int
 
     @Query("DELETE FROM summaries")
-    suspend fun deleteAllSummaries()
+    suspend fun deleteAllSummaries(): Int
+
+    // 유틸리티 함수들
+    @Transaction
+    suspend fun insertOrUpdateSummary(summary: SummaryEntity): Boolean {
+        return try {
+            insertSummary(summary)
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    @Transaction
+    suspend fun insertOrUpdateSummaries(summaries: List<SummaryEntity>): Boolean {
+        return try {
+            insertSummaries(summaries)
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
 }
