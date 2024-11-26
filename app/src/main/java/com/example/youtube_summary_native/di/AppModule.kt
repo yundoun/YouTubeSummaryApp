@@ -17,9 +17,9 @@ object AppModule {
             .build()
     }
 
-    @Provides
-    @Singleton
-    fun provideNetworkMonitor(
-        okHttpClient: OkHttpClient
-    ): NetworkMonitor = NetworkMonitor(okHttpClient)
+//    @Provides
+//    @Singleton
+//    fun provideNetworkMonitor(
+//        okHttpClient: OkHttpClient
+//    ): NetworkMonitor = NetworkMonitor(okHttpClient)
 }
