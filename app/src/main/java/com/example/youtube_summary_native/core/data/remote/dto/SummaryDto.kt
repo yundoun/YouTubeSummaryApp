@@ -24,13 +24,13 @@ data class SummaryResponseDto(
 @Serializable
 data class AllSummariesDto(
     @SerialName("summary_list")
-    val summaryList: List<SummaryInfoDto>,
+    val summaryList: List<SummaryInfoDto>? = null,
 
     @SerialName("status")
     val status: String,
 
     @SerialName("error_code")
-    val errorCode: String,
+    val errorCode: String? = null,
 
     @SerialName("message")
     val message: String
@@ -48,7 +48,7 @@ data class SummaryInfoDto(
     val summary: String,
 
     @SerialName("script")
-    val script: List<ScriptItemDto>,
+    val rawScript: String,
 
     @SerialName("thumbnailUrl")
     val thumbnailUrl: String,
@@ -62,7 +62,12 @@ data class SummaryInfoDto(
 
 @Serializable
 data class ScriptItemDto(
+    @SerialName("text")
     val text: String,
+
+    @SerialName("start")
     val start: Double,
+
+    @SerialName("duration")
     val duration: Double
 )

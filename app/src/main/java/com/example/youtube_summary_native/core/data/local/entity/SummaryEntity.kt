@@ -15,8 +15,7 @@ data class SummaryEntity(
     val videoId: String,
     val title: String,
     val summary: String,
-    @TypeConverters(ScriptItemConverter::class)
-    val script: List<ScriptItem>,
+    val rawScript: String,
     val thumbnailUrl: String,
     val status: String,
     val createdAt: String

@@ -23,7 +23,7 @@ fun SummaryResponseDto.toDomain(): SummaryResponse {
 
 fun AllSummariesDto.toDomain(): AllSummaries {
     return AllSummaries(
-        summaryList = summaryList.map { it.toDomain() },
+        summaryList = summaryList?.map { it.toDomain() } ?: emptyList(),
         status = status,
         errorCode = errorCode,
         message = message
@@ -35,7 +35,7 @@ fun SummaryInfoDto.toDomain(): SummaryInfo {
         videoId = videoId,
         title = title,
         summary = summary,
-        script = script.map { it.toDomain() },
+        rawScript = rawScript,  // 파싱된 script 사용
         thumbnailUrl = thumbnailUrl,
         status = status,
         createdAt = createdAt
@@ -56,7 +56,7 @@ fun SummaryEntity.toDomain(): SummaryInfo {
         videoId = videoId,
         title = title,
         summary = summary,
-        script = script,
+        rawScript = rawScript,
         thumbnailUrl = thumbnailUrl,
         status = status,
         createdAt = createdAt
@@ -69,7 +69,7 @@ fun SummaryInfo.toEntity(): SummaryEntity {
         videoId = videoId,
         title = title,
         summary = summary,
-        script = script,
+        rawScript = rawScript,
         thumbnailUrl = thumbnailUrl,
         status = status,
         createdAt = createdAt

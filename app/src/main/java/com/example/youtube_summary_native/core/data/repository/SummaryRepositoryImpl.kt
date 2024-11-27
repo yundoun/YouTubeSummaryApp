@@ -1,5 +1,7 @@
 package com.example.youtube_summary_native.core.data.repository
 
+import android.util.Log
+import com.example.youtube_summary_native.core.data.mapper.toDomain
 import com.example.youtube_summary_native.core.data.remote.api.SummaryApi
 import com.example.youtube_summary_native.core.data.remote.websocket.WebSocketManager
 import com.example.youtube_summary_native.core.domain.model.summary.AllSummaries
@@ -19,15 +21,24 @@ class SummaryRepositoryImpl @Inject constructor(
 
     override suspend fun getSummaryInfoAll(username: String?): AllSummaries {
         return try {
-            summaryApi.getSummaryInfoAll(username)
+            val response = summaryApi.getSummaryInfoAll(username)
+            response.toDomain().also { result ->
+                Log.d(
+                    "SummaryRepositoryImpl",
+                    "Converted response - status: ${result.status}, " +
+                            "list size: ${result.summaryList.size}, " +
+                            "message: ${result.message}"
+                )
+            }
         } catch (e: Exception) {
+            Log.e("SummaryRepositoryImpl", "Error in getSummaryInfoAll", e)
             throw Exception("Failed to load all summaries: ${e.message}")
         }
     }
 
     override suspend fun getSummaryInfo(videoId: String): SummaryResponse {
         return try {
-            summaryApi.getSummaryInfo(videoId)
+            summaryApi.getSummaryInfo(videoId).toDomain()
         } catch (e: Exception) {
             throw Exception("Failed to load summary info: ${e.message}")
         }
@@ -35,7 +46,7 @@ class SummaryRepositoryImpl @Inject constructor(
 
     override suspend fun postSummaryInfo(keyUrl: String, username: String?): SummaryResponse {
         return try {
-            summaryApi.postSummaryInfo(keyUrl, username)
+            summaryApi.postSummaryInfo(keyUrl, username).toDomain()
         } catch (e: Exception) {
             throw Exception("Failed to post summary info: ${e.message}")
         }
