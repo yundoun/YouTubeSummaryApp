@@ -1,12 +1,13 @@
 package com.example.youtube_summary_native.core.presentation.ui.home
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.youtube_summary_native.core.domain.model.state.HomeScreenState
 import com.example.youtube_summary_native.core.domain.usecase.auth.LoginUseCase
 import com.example.youtube_summary_native.core.domain.usecase.summary.DeleteSummaryUseCase
 import com.example.youtube_summary_native.core.domain.usecase.summary.GetSummaryUseCase
-import com.example.youtube_summary_native.core.util.NetworkMonitor
+import com.example.youtube_summary_native.util.NetworkMonitor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,13 +30,25 @@ class HomeViewModel @Inject constructor(
     val isOfflineMode: StateFlow<Boolean> = _isOfflineMode
 
     init {
-        initializeHomeScreen()
-        observeNetworkState()
+        viewModelScope.launch {
+            // 네트워크 모니터 초기화
+            networkMonitor.initialize()
+            // 초기 상태 설정
+            _isOfflineMode.value = !networkMonitor.isOnline()
+            // 최초 데이터 로드
+            initializeHomeScreen()
+            // 네트워크 상태 관찰 시작
+            observeNetworkState()
+        }
     }
 
     private fun initializeHomeScreen() {
         viewModelScope.launch {
             try {
+                _uiState.update { it.copy(isLoading = true) }
+
+                // 네트워크 모니터 초기화
+                networkMonitor.initialize()
                 val isConnected = networkMonitor.isOnline()
                 _isOfflineMode.value = !isConnected
 
@@ -46,29 +59,36 @@ class HomeViewModel @Inject constructor(
                                 _uiState.update { currentState ->
                                     currentState.copy(
                                         homeScrollState = true,
-//                                        summaryList = result.summaries.summaryList
+                                        summaries = result.summaries.summaryList ?: emptyList(),
+                                        isLoading = false
                                     )
                                 }
                             }
                             is GetSummaryUseCase.Result.Error -> {
-                                // Handle error
+                                _uiState.update { it.copy(isLoading = false) }
+                                Log.e("HomeViewModel", "Failed to get summaries", result.exception)
                             }
-
-                            GetSummaryUseCase.Result.Loading -> TODO()
+                            GetSummaryUseCase.Result.Loading -> {
+                                _uiState.update { it.copy(isLoading = true) }
+                            }
                         }
                     }
                 }
             } catch (e: Exception) {
-                // Handle error
+                _uiState.update { it.copy(isLoading = false) }
+                Log.e("HomeViewModel", "Failed to initialize home screen", e)
             }
         }
     }
 
+
     private fun observeNetworkState() {
         viewModelScope.launch {
             networkMonitor.isOnline.collect { isOnline ->
+                val wasOffline = _isOfflineMode.value
                 _isOfflineMode.value = !isOnline
-                if (isOnline) {
+                // 오프라인에서 온라인으로 전환된 경우에만 데이터 새로고침
+                if (isOnline && wasOffline) {
                     initializeHomeScreen()
                 }
             }

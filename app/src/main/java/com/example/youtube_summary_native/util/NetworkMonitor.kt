@@ -1,4 +1,4 @@
-package com.example.youtube_summary_native.core.util
+package com.example.youtube_summary_native.util
 
 import android.content.Context
 import android.net.ConnectivityManager

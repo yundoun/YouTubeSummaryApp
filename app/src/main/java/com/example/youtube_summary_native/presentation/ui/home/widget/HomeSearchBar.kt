@@ -135,23 +135,23 @@ fun HomeSearchBar(
             )
 
             // Placeholder Text with Gradient
-            if (textVisibilityAlpha > 0f && !isOfflineMode) {
-                Text(
-                    text = "동영상을 요약해 보세요",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.Center),
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        brush = Brush.horizontalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.primary,
-                                MaterialTheme.colorScheme.tertiary
-                            )
-                        )
-                    ),
-                    textAlign = TextAlign.Center
-                )
-            }
+//            if (textVisibilityAlpha > 0f && !isOfflineMode) {
+//                Text(
+//                    text = "동영상을 요약해 보세요",
+//                    modifier = Modifier
+//                        .fillMaxWidth()
+//                        .align(Alignment.Center),
+//                    style = MaterialTheme.typography.headlineMedium.copy(
+//                        brush = Brush.horizontalGradient(
+//                            colors = listOf(
+//                                MaterialTheme.colorScheme.primary,
+//                                MaterialTheme.colorScheme.tertiary
+//                            )
+//                        )
+//                    ),
+//                    textAlign = TextAlign.Center
+//                )
+//            }
         }
     }
 }

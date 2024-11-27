@@ -16,44 +16,27 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object UseCaseModule {
-
     @Provides
     @Singleton
     fun provideLoginUseCase(
         userRepository: UserRepository
-    ): LoginUseCase {
-        return LoginUseCase(userRepository)
-    }
-
-    @Provides
-    @Singleton
-    fun provideRefreshTokenUseCase(
-        userRepository: UserRepository
-    ): RefreshTokenUseCase {
-        return RefreshTokenUseCase(userRepository)
-    }
+    ): LoginUseCase = LoginUseCase(userRepository)
 
     @Provides
     @Singleton
     fun provideGetSummaryUseCase(
         summaryRepository: SummaryRepository
-    ): GetSummaryUseCase {
-        return GetSummaryUseCase(summaryRepository)
-    }
-
-    @Provides
-    @Singleton
-    fun provideRequestSummaryUseCase(
-        summaryRepository: SummaryRepository
-    ): RequestSummaryUseCase {
-        return RequestSummaryUseCase(summaryRepository)
-    }
+    ): GetSummaryUseCase = GetSummaryUseCase(summaryRepository)
 
     @Provides
     @Singleton
     fun provideDeleteSummaryUseCase(
         summaryRepository: SummaryRepository
-    ): DeleteSummaryUseCase {
-        return DeleteSummaryUseCase(summaryRepository)
-    }
+    ): DeleteSummaryUseCase = DeleteSummaryUseCase(summaryRepository)
+
+    @Provides
+    @Singleton
+    fun provideRequestSummaryUseCase(
+        summaryRepository: SummaryRepository
+    ): RequestSummaryUseCase = RequestSummaryUseCase(summaryRepository)
 }

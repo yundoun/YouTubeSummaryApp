@@ -2,6 +2,7 @@ package com.example.youtube_summary_native.core.di
 
 import com.example.youtube_summary_native.config.env.AppConfig
 import com.example.youtube_summary_native.core.data.remote.api.SummaryApi
+import com.example.youtube_summary_native.core.data.remote.api.UserApi
 import com.example.youtube_summary_native.core.data.remote.interceptor.AuthInterceptor
 import dagger.Module
 import dagger.Provides
@@ -56,5 +57,11 @@ object NetworkModule {
     @Singleton
     fun provideSummaryApi(retrofit: Retrofit): SummaryApi {
         return retrofit.create(SummaryApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideUserApi(retrofit: Retrofit): UserApi {
+        return retrofit.create(UserApi::class.java)
     }
 }

@@ -147,28 +147,28 @@ fun HomeScreen(
                             )
                         } else {
                             // Show recent summaries section
-//                            HomeRecentSummary(
-//                                homeScreenState = uiState,
-//                                summaries = uiState.summaries, // summaries 전달 추가
-//                                isLoading = uiState.isLoading, // ViewModel의 로딩 상태를 이용하도록 수정
-//                                isAdmin = uiState.isAdmin, // Admin 상태 추가
-//                                isLoginUser = uiState.isLoginUser, // 로그인 상태 추가
-//                                isOfflineMode = isOfflineMode,
-//                                onEditClick = viewModel::toggleEditMode,
-//                                onDeleteAllClick = {
-//                                    videoIdToDelete = null
-//                                    showDeleteDialog = true
-//                                },
-//                                onSortClick = viewModel::switchGridSortState,
-//                                onItemClick = { videoId ->
-//                                    viewModel.setSearchText("")
-//                                    onNavigateToSummary()
-//                                },
-//                                onDeleteClick = { videoId ->
-//                                    videoIdToDelete = videoId
-//                                    showDeleteDialog = true
-//                                }
-//                            )
+                            HomeRecentSummary(
+                                homeScreenState = uiState,
+                                summaries = uiState.summaries, // summaries 전달 추가
+                                isLoading = uiState.isLoading, // ViewModel의 로딩 상태를 이용하도록 수정
+                                isAdmin = uiState.isAdmin, // Admin 상태 추가
+                                isLoginUser = uiState.isLoginUser, // 로그인 상태 추가
+                                isOfflineMode = isOfflineMode,
+                                onEditClick = viewModel::toggleEditMode,
+                                onDeleteAllClick = {
+                                    videoIdToDelete = null
+                                    showDeleteDialog = true
+                                },
+                                onSortClick = viewModel::switchGridSortState,
+                                onItemClick = { videoId ->
+                                    viewModel.setSearchText("")
+                                    onNavigateToSummary()
+                                },
+                                onDeleteClick = { videoId ->
+                                    videoIdToDelete = videoId
+                                    showDeleteDialog = true
+                                }
+                            )
 
                         }
                     }

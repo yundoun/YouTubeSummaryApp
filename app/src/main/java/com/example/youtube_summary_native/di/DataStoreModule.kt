@@ -1,8 +1,7 @@
 package com.example.youtube_summary_native.di
 
 import android.content.Context
-
-import com.example.youtube_summary_native.util.NetworkMonitor
+import com.example.youtube_summary_native.core.data.local.TokenManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -12,16 +11,13 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object AppModule {
-    @Provides
-    @Singleton
-    fun provideContext(
-        @ApplicationContext context: Context
-    ): Context = context
+object DataStoreModule {
 
     @Provides
     @Singleton
-    fun provideNetworkMonitor(
-        context: Context
-    ): NetworkMonitor = NetworkMonitor(context)
+    fun provideTokenManager(
+        @ApplicationContext context: Context
+    ): TokenManager {
+        return TokenManager(context)
+    }
 }
