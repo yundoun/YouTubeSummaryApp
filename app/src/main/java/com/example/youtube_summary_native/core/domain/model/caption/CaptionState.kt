@@ -1,7 +1,6 @@
 package com.example.youtube_summary_native.core.domain.model.caption
 
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
 
 data class CaptionState(
     val captions: List<Caption> = emptyList(),
@@ -11,7 +10,7 @@ data class CaptionState(
     val captionOpacities: Map<Int, Float> = emptyMap(),
     val isControlsVisible: Boolean = false,
     val captionOffset: Float = 8f,
-    val captionStyle: CaptionStyle = CaptionStyle.MINIMALIST,
+    val captionStyle: CaptionStyle = CaptionStyle.DEFAULT,
     val fontSize: Float = 14f
 ) {
     // 유틸리티 메서드

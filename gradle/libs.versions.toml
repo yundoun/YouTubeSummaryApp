@@ -17,6 +17,7 @@ kotlinx-serialization = "1.6.2"
 coil = "2.5.0"
 kotlinx_datetime = "0.4.0"
 datastore = "1.0.0"
+android-youtube-player = "12.1.0"
 
 [libraries]
 # AndroidX
@@ -71,6 +72,9 @@ androidx-junit = { group = "androidx.test.ext", name = "junit", version = "1.1.5
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version = "3.5.1" }
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+
+# youtube player
+youtube-player = { module = "com.pierfrancescosoffritti.androidyoutubeplayer:core", version.ref = "android-youtube-player" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

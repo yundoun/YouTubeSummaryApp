@@ -113,6 +113,9 @@ dependencies {
 
     implementation(libs.androidx.datastore.preferences)
 
+    // YouTube Player
+    implementation(libs.youtube.player)
+
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

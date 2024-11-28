@@ -1,23 +1,190 @@
 package com.example.youtube_summary_native.presentation.ui.summary
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.youtube_summary_native.presentation.ui.summary.SummaryViewModel
+import com.example.youtube_summary_native.presentation.ui.summary.widget.ScriptWidget
+import com.example.youtube_summary_native.presentation.ui.summary.widget.YouTubePlayer
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SummaryScreen(
     videoId: String,
     onBackPress: () -> Unit,
     viewModel: SummaryViewModel = hiltViewModel()
 ) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(text = "Summary Screen: $videoId")
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp
+    val isSmallWidth = screenWidth < 600.dp
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(text = uiState.title) },
+                navigationIcon = {
+                    IconButton(onClick = onBackPress) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { /* TODO: Download */ }) {
+                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Download")
+                    }
+                    IconButton(onClick = { /* TODO: Share */ }) {
+                        Icon(Icons.Default.Share, contentDescription = "Share")
+                    }
+                    IconButton(
+                        onClick = { viewModel.toggleDrawer() }
+                    ) {
+                        Icon(Icons.Default.Menu, contentDescription = "Menu")
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                // Main Content
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                ) {
+                    // Video Player placeholder
+                    YouTubePlayer(
+                        videoId = videoId,
+                        modifier = Modifier.padding(16.dp),
+                        onReady = { player ->
+                            // ViewModel에서 player 인스턴스 저장하거나 필요한 처리를 할 수 있습니다
+                            viewModel.onPlayerReady(player)
+                        }
+                    )
+
+                    // Caption Controls placeholder
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Caption Controls") // Placeholder
+                        }
+                    }
+
+                    // Tab Layout
+                    var selectedTab by remember { mutableIntStateOf(0) }
+                    Column {
+                        TabRow(selectedTabIndex = selectedTab) {
+                            Tab(
+                                selected = selectedTab == 0,
+                                onClick = { selectedTab = 0 },
+                                text = { Text("요약 스크립트") },
+                                icon = { Icon(Icons.Default.DateRange, contentDescription = null) }
+                            )
+                            Tab(
+                                selected = selectedTab == 1,
+                                onClick = { selectedTab = 1 },
+                                text = { Text("전체 스크립트") },
+                                icon = { Icon(Icons.Default.DateRange, contentDescription = null) }
+                            )
+                        }
+
+                        // Tab Content
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                                .padding(16.dp)
+                        ) {
+                            when (selectedTab) {
+                                0 -> ScriptWidget(
+                                    scriptData = uiState.summaryContent,
+                                    isLoading = uiState.isLoading,
+                                    hasError = uiState.error != null,
+                                    onTimeClick = { timeInSeconds ->
+                                        // TODO: Implement video seeking
+                                    }
+                                )
+                                1 -> ScriptWidget(
+                                    scriptData = uiState.scriptContent,
+                                    isLoading = uiState.isLoading,
+                                    hasError = uiState.error != null,
+                                    onTimeClick = { timeInSeconds ->
+                                        // TODO: Implement video seeking
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    // Tab Content
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .padding(16.dp)
+                    ) {
+                        when (selectedTab) {
+                            0 -> Text("Summary Content") // Placeholder
+                            1 -> Text("Full Script Content") // Placeholder
+                        }
+                    }
+                }
+
+                // Drawer for large screens
+                if (!isSmallWidth && uiState.isDrawerOpen) {
+                    Surface(
+                        modifier = Modifier
+                            .width(300.dp)
+                            .fillMaxHeight(),
+                        color = MaterialTheme.colorScheme.surface,
+                        shadowElevation = 4.dp
+                    ) {
+                        Text("Drawer Content") // Placeholder
+                    }
+                }
+            }
+
+            // Drawer for small screens
+            if (isSmallWidth && uiState.isDrawerOpen) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.3f),
+                    onClick = { viewModel.toggleDrawer() }
+                ) {
+                    Surface(
+                        modifier = Modifier
+                            .width(300.dp)
+                            .fillMaxHeight()
+                            .align(Alignment.CenterEnd),
+                        color = MaterialTheme.colorScheme.surface,
+                        shadowElevation = 4.dp
+                    ) {
+                        Text("Drawer Content") // Placeholder
+                    }
+                }
+            }
+        }
     }
 }
