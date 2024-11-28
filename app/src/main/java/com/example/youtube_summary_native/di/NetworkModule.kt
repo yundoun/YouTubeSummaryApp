@@ -27,8 +27,8 @@ object NetworkModule {
     @Singleton
     fun provideHttpLoggingInterceptor(): HttpLoggingInterceptor {
         return HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
-            setLevel(HttpLoggingInterceptor.Level.BODY)
+//            level = HttpLoggingInterceptor.Level.BODY
+            level = HttpLoggingInterceptor.Level.BASIC // 중요한 정보만 출력
         }
     }
 

@@ -33,19 +33,24 @@ class SummaryViewModel @Inject constructor(
     private val videoId: String = checkNotNull(savedStateHandle["videoId"])
     private var youtubePlayer: YouTubePlayer? = null
 
+    private val _currentVideoId = MutableStateFlow(videoId)
+    val currentVideoId = _currentVideoId.asStateFlow()
+
     init {
         Log.d(TAG, "Initializing SummaryViewModel with videoId: $videoId")
         _uiState.update { it.copy(videoId = videoId) }
-        loadSummaryData()
+        _currentVideoId.value = videoId  // 초기 videoId 설정
+        loadSummaryData(videoId)
+        loadAllSummaries()
     }
 
-    private fun loadSummaryData() {
+    private fun loadSummaryData(targetVideoId: String = videoId) {
         viewModelScope.launch {
-            Log.d(TAG, "Starting to load summary data")
+            Log.d(TAG, "Starting to load summary data for video: $targetVideoId")
             _uiState.update { it.copy(isLoading = true) }
             try {
-                val response = summaryRepository.getSummaryInfo(videoId)
-                Log.d(TAG, "Received response: $response")
+                val response = summaryRepository.getSummaryInfo(targetVideoId)
+//                Log.d(TAG, "Received response: $response")
 
                 val formattedScript = response.summaryInfo.rawScript.let { script ->
                     Log.d(TAG, "Processing raw script: $script")
@@ -55,6 +60,7 @@ class SummaryViewModel @Inject constructor(
                 _uiState.update { state ->
                     state.copy(
                         isLoading = false,
+                        videoId = targetVideoId,  // videoId 업데이트 추가
                         title = response.summaryInfo.title,
                         summaryContent = if (response.summaryInfo.summary.startsWith("Error:")) {
                             Log.w(TAG, "Summary contains error: ${response.summaryInfo.summary}")
@@ -79,6 +85,38 @@ class SummaryViewModel @Inject constructor(
         ignoreUnknownKeys = true
         isLenient = true
         coerceInputValues = true // 추가: 입력값 강제 변환 허용
+    }
+
+    private fun loadAllSummaries() {
+        viewModelScope.launch {
+            try {
+                val allSummaries = summaryRepository.getSummaryInfoAll(null)
+                _uiState.update { it.copy(
+                    summaryList = allSummaries.summaryList
+                ) }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading all summaries", e)
+                // 에러 처리는 현재 상태를 유지하고 로그만 남깁니다
+            }
+        }
+    }
+
+    fun onVideoSelect(newVideoId: String) {
+        if (newVideoId != currentVideoId.value) {
+            _currentVideoId.value = newVideoId
+            _uiState.update {
+                it.copy(
+                    isDrawerOpen = false,
+                    isLoading = true,
+                    title = "",
+                    summaryContent = "",
+                    scriptContent = "",
+                    error = null
+                )
+            }
+            youtubePlayer?.loadVideo(newVideoId, 0f)
+            loadSummaryData(newVideoId)
+        }
     }
 
     private fun parseAndFormatScript(rawScript: String): String {
@@ -107,8 +145,6 @@ class SummaryViewModel @Inject constructor(
 
             scriptItems.joinToString("\n") { script ->
                 "[${formatSeconds(script.start)}] ${script.text}"
-            }.also {
-                Log.d(TAG, "Formatted script: $it")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Script parsing error", e)

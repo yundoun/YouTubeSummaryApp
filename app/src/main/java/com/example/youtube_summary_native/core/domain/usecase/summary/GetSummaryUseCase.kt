@@ -12,7 +12,7 @@ class GetSummaryUseCase @Inject constructor(
             val summaries: AllSummaries
         ) : Result()
         data class Error(val exception: Exception) : Result()
-        object Loading : Result()
+        data object Loading : Result()
     }
 
     suspend operator fun invoke(username: String? = null): Result {
