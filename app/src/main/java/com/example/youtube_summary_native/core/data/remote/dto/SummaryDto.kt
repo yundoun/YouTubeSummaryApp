@@ -2,6 +2,11 @@ package com.example.youtube_summary_native.core.data.remote.dto
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
 
 @Serializable
 data class SummaryResponseDto(
@@ -48,7 +53,7 @@ data class SummaryInfoDto(
     val summary: String,
 
     @SerialName("script")
-    val rawScript: String,
+    private val _script: JsonElement, // JsonElement로 받아서 처리
 
     @SerialName("thumbnailUrl")
     val thumbnailUrl: String,
@@ -58,7 +63,14 @@ data class SummaryInfoDto(
 
     @SerialName("created_at")
     val createdAt: String
-)
+) {
+    val rawScript: String
+        get() = when (_script) {
+            is JsonArray -> Json.encodeToString(_script) // 직접 배열이 왔을 경우
+            is JsonPrimitive -> _script.content // 문자열로 된 JSON이 왔을 경우
+            else -> "[]"
+        }
+}
 
 @Serializable
 data class ScriptItemDto(
@@ -71,3 +83,4 @@ data class ScriptItemDto(
     @SerialName("duration")
     val duration: Double
 )
+
