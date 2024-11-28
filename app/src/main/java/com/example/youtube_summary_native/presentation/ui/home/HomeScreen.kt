@@ -23,7 +23,7 @@ import com.example.youtube_summary_native.core.presentation.ui.home.components.H
 
 @Composable
 fun HomeScreen(
-    onNavigateToSummary: () -> Unit,
+    onNavigateToSummary: (String) -> Unit,
     onNavigateToAuth: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
@@ -141,7 +141,7 @@ fun HomeScreen(
                                 videoId = uiState.videoId,
                                 isOfflineMode = isOfflineMode,
                                 onStartSummaryClick = {
-                                    onNavigateToSummary()
+                                    onNavigateToSummary(uiState.videoId)
                                     viewModel.setSearchText("")
                                 }
                             )
@@ -162,7 +162,7 @@ fun HomeScreen(
                                 onSortClick = viewModel::switchGridSortState,
                                 onItemClick = { videoId ->
                                     viewModel.setSearchText("")
-                                    onNavigateToSummary()
+                                    onNavigateToSummary(videoId)
                                 },
                                 onDeleteClick = { videoId ->
                                     videoIdToDelete = videoId

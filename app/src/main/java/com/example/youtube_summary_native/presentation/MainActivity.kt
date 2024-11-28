@@ -6,8 +6,10 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.example.youtube_summary_native.core.presentation.ui.home.HomeScreen
+import androidx.navigation.compose.rememberNavController
+import com.example.youtube_summary_native.presentation.navigation.NavGraph
 import com.example.youtube_summary_native.presentation.theme.YouTubeSummaryTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -22,12 +24,15 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    HomeScreen(
-                        onNavigateToSummary = { /* Summary Screen Navigation 구현 시 추가 */ },
-                        onNavigateToAuth = { /* Auth Screen Navigation 구현 시 추가 */ }
-                    )
+                    MainScreen()
                 }
             }
         }
     }
+}
+
+@Composable
+fun MainScreen() {
+    val navController = rememberNavController()
+    NavGraph(navController = navController)
 }
