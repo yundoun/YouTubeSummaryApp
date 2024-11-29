@@ -14,10 +14,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.example.youtube_summary_native.core.constants.AppDimensions
+import com.example.youtube_summary_native.presentation.theme.AppColors
 import kotlinx.coroutines.launch
 
 @Composable
@@ -30,15 +34,14 @@ fun ScriptWidget(
 ) {
     val scope = rememberCoroutineScope()
     val clipboardManager = LocalClipboardManager.current
-    val scrollState = rememberScrollState()
 
     Card(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(AppDimensions.CardRadius),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxWidth()
         ) {
             // Copy Button
             Surface(
@@ -50,7 +53,6 @@ fun ScriptWidget(
                         scriptData?.let {
                             scope.launch {
                                 clipboardManager.setText(AnnotatedString(it))
-                                // TODO: Show snackbar or toast for feedback
                             }
                         }
                     },
@@ -69,60 +71,83 @@ fun ScriptWidget(
 
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
                     .padding(16.dp)
             ) {
-                if (scriptData != null) {
-                    when {
-                        isLoading -> {
-                            CircularProgressIndicator(
-                                modifier = Modifier.align(Alignment.Center)
-                            )
+                when {
+                    isLoading -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+                    hasError -> {
+                        Text(
+                            text = "스크립트를 불러오는데 실패했습니다.",
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+                    scriptData == null || scriptData.isEmpty() -> {
+                        Text(
+                            text = "요약 스크립트를 준비중입니다.",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                    else -> {
+                        val processedText = remember(scriptData) {
+                            processMarkdownText(scriptData)
                         }
 
-                        hasError -> {
-                            Text(
-                                text = "스크립트를 불러오는데 실패했습니다.",
-                                modifier = Modifier.align(Alignment.Center)
-                            )
-                        }
+                        val annotatedText = remember(processedText) {
+                            buildAnnotatedString {
+                                val timePattern = Regex("""\[(\d{2}:\d{2}:\d{2})\]""")
+                                var lastIndex = 0
 
-                        scriptData.isEmpty() -> {
-                            Text(
-                                text = "요약 스크립트를 준비중입니다.",
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                textAlign = TextAlign.Center,
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                        }
+                                timePattern.findAll(processedText).forEach { matchResult ->
+                                    // Add text before timestamp
+                                    append(processedText.substring(lastIndex, matchResult.range.first))
 
-                        else -> {
-                            val processedText = remember(scriptData) {
-                                processMarkdownText(scriptData)
-                            }
-
-                            // Text 컴포넌트를 ClickableText로 변경
-                            SelectionContainer {
-                                ClickableText(
-                                    text = buildAnnotatedString {
-                                        append(processedText)
-                                    },
-                                    modifier = Modifier.verticalScroll(scrollState),
-                                    onClick = { offset ->
-                                        // 시간 패턴 [HH:MM:SS] 매칭
-                                        val timePattern = Regex("""\[(\d{2}:\d{2}:\d{2})\]""")
-                                        val text = processedText.substring(
-                                            maxOf(0, offset - 10),
-                                            minOf(processedText.length, offset + 10)
+                                    // Add timestamp with style
+                                    val timestamp = matchResult.groupValues[1]
+                                    withStyle(
+                                        style = SpanStyle(
+                                            color = AppColors.Primary,
+                                            textDecoration = TextDecoration.Underline
                                         )
-                                        timePattern.find(text)?.groupValues?.get(1)?.let { timeStr ->
-                                            onTimeClick(parseTimeToSeconds(timeStr))
-                                        }
+                                    ) {
+                                        append("[${timestamp}]")
                                     }
-                                )
+
+                                    lastIndex = matchResult.range.last + 1
+                                }
+
+                                // Add remaining text
+                                if (lastIndex < processedText.length) {
+                                    append(processedText.substring(lastIndex))
+                                }
                             }
+                        }
+
+                        SelectionContainer {
+                            ClickableText(
+                                text = annotatedText,
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    color = MaterialTheme.colorScheme.onSurface
+                                ),
+                                onClick = { offset ->
+                                    val timePattern = Regex("""\[(\d{2}:\d{2}:\d{2})\]""")
+                                    val text = processedText.substring(
+                                        maxOf(0, offset - 10),
+                                        minOf(processedText.length, offset + 10)
+                                    )
+                                    timePattern.find(text)?.groupValues?.get(1)?.let { timeStr ->
+                                        onTimeClick(parseTimeToSeconds(timeStr))
+                                    }
+                                }
+                            )
                         }
                     }
                 }
@@ -131,7 +156,6 @@ fun ScriptWidget(
     }
 }
 
-// 시간 문자열을 초 단위로 변환하는 함수 추가
 private fun parseTimeToSeconds(timeStr: String): Long {
     val parts = timeStr.split(":")
     return parts[0].toLong() * 3600 + // hours
@@ -146,9 +170,15 @@ private fun processMarkdownText(text: String): String {
         "[$1] $2"
     )
 
+    // (time//시간) 형식 제거
+    processedText = processedText.replace(
+        Regex("""\(time://[^\)]+\)"""),
+        ""
+    )
+
     // [HH:MM:SS] 형식의 타임라인 처리
     processedText = processedText.replace(
-        Regex("""\[(\d{2}:\d{2}:\d{2})\](?!\(time://[^\)]+\))(.*)"""),
+        Regex("""\[(\d{2}:\d{2}:\d{2})\](.*)"""),
         "\n[$1]$2\n"
     )
 
@@ -158,5 +188,5 @@ private fun processMarkdownText(text: String): String {
     // 연속된 줄바꿈 정리
     processedText = processedText.replace(Regex("\n{3,}"), "\n\n")
 
-    return processedText
+    return processedText.trim()
 }

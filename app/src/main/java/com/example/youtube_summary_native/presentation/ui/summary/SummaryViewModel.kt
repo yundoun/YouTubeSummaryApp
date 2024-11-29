@@ -34,7 +34,9 @@ class SummaryViewModel @Inject constructor(
     private var youtubePlayer: YouTubePlayer? = null
 
     private val _currentVideoId = MutableStateFlow(videoId)
-    val currentVideoId = _currentVideoId.asStateFlow()
+    private val currentVideoId = _currentVideoId.asStateFlow()
+
+
 
     init {
         Log.d(TAG, "Initializing SummaryViewModel with videoId: $videoId")
@@ -101,6 +103,7 @@ class SummaryViewModel @Inject constructor(
         }
     }
 
+
     fun onVideoSelect(newVideoId: String) {
         if (newVideoId != currentVideoId.value) {
             _currentVideoId.value = newVideoId
@@ -161,25 +164,26 @@ class SummaryViewModel @Inject constructor(
         return String.format("%02d:%02d:%02d", hours, minutes, secs)
     }
 
-    fun onTimeClicked(timeStr: String) {
-        // 나중에 YouTube Player 구현 시 사용
-        val parts = timeStr.split(":")
-        if (parts.size == 3) {
-            val seconds = parts[0].toInt() * 3600 +
-                    parts[1].toInt() * 60 +
-                    parts[2].toInt()
-            // TODO: Player seekTo(seconds)
+    fun onPlayerReady(player: YouTubePlayer) {
+        try {
+            youtubePlayer = player
+            Log.d(TAG, "YouTube player initialized successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error initializing YouTube player", e)
         }
     }
 
-
-    fun onPlayerReady(player: YouTubePlayer) {
-        youtubePlayer = player
+    fun seekTo(timeInSeconds: Long) {
+        try {
+            youtubePlayer?.let { player ->
+                Log.d(TAG, "Seeking to time: $timeInSeconds seconds")
+                player.seekTo(timeInSeconds.toFloat())
+            } ?: Log.w(TAG, "YouTube player is not initialized")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error seeking to time: $timeInSeconds", e)
+        }
     }
 
-    fun seekTo(seconds: Float) {
-        youtubePlayer?.seekTo(seconds)
-    }
 
     // Caption 관련 기능
     fun toggleCaptionVisibility() {
@@ -229,3 +233,4 @@ class SummaryViewModel @Inject constructor(
         private const val TAG = "SummaryViewModel"
     }
 }
+
