@@ -18,7 +18,7 @@ import com.example.youtube_summary_native.core.constants.AppDimensions
 import com.example.youtube_summary_native.core.presentation.ui.common.LoginButton
 import com.example.youtube_summary_native.core.presentation.ui.common.dialog.DeleteDialog
 import com.example.youtube_summary_native.core.presentation.ui.home.components.HomeRecentSummary
-import com.example.youtube_summary_native.core.presentation.ui.home.components.HomeSearchBar
+import com.example.youtube_summary_native.presentation.ui.home.widget.HomeSearchBar
 import com.example.youtube_summary_native.core.presentation.ui.home.components.HomeStartSummary
 
 @Composable

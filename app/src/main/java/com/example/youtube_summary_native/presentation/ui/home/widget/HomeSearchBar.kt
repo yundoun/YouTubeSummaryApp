@@ -1,5 +1,6 @@
-package com.example.youtube_summary_native.core.presentation.ui.home.components
+package com.example.youtube_summary_native.presentation.ui.home.widget
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
@@ -19,11 +20,9 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.youtube_summary_native.core.constants.AppDimensions
 import com.example.youtube_summary_native.core.domain.model.state.HomeScreenState
@@ -44,6 +43,12 @@ fun HomeSearchBar(
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     val searchText = remember { mutableStateOf("") }
+
+    // Back handler for search focus
+    BackHandler(enabled = homeScreenState.searchBarState.isFocused) {
+        focusManager.clearFocus()
+        onFocusChanged(false)
+    }
 
     val transition = updateTransition(
         targetState = homeScreenState.searchBarState.isEmpty && !homeScreenState.searchBarState.isFocused,
@@ -89,8 +94,14 @@ fun HomeSearchBar(
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(focusRequester)
-                    .onFocusChanged {
-                        onFocusChanged(it.isFocused)
+                    .onFocusChanged { focusState ->
+                        if (!focusState.isFocused && homeScreenState.searchBarState.isFocused) {
+                            // 포커스가 해제될 때만 콜백 호출
+                            onFocusChanged(false)
+                        } else if (focusState.isFocused && !homeScreenState.searchBarState.isFocused) {
+                            // 포커스를 얻을 때만 콜백 호출
+                            onFocusChanged(true)
+                        }
                     },
                 enabled = !isOfflineMode,
                 decorationBox = { innerTextField ->
@@ -133,25 +144,6 @@ fun HomeSearchBar(
                     }
                 }
             )
-
-            // Placeholder Text with Gradient
-//            if (textVisibilityAlpha > 0f && !isOfflineMode) {
-//                Text(
-//                    text = "동영상을 요약해 보세요",
-//                    modifier = Modifier
-//                        .fillMaxWidth()
-//                        .align(Alignment.Center),
-//                    style = MaterialTheme.typography.headlineMedium.copy(
-//                        brush = Brush.horizontalGradient(
-//                            colors = listOf(
-//                                MaterialTheme.colorScheme.primary,
-//                                MaterialTheme.colorScheme.tertiary
-//                            )
-//                        )
-//                    ),
-//                    textAlign = TextAlign.Center
-//                )
-//            }
         }
     }
 }
