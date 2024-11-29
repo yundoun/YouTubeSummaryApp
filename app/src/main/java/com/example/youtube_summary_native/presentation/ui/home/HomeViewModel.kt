@@ -4,10 +4,13 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.youtube_summary_native.core.domain.model.state.HomeScreenState
+import com.example.youtube_summary_native.core.domain.model.user.UserInfo
 import com.example.youtube_summary_native.core.domain.usecase.auth.LoginUseCase
 import com.example.youtube_summary_native.core.domain.usecase.summary.DeleteSummaryUseCase
 import com.example.youtube_summary_native.core.domain.usecase.summary.GetSummaryUseCase
 import com.example.youtube_summary_native.core.domain.usecase.summary.RequestSummaryUseCase
+import com.example.youtube_summary_native.core.presentation.auth.AuthViewModel
+import com.example.youtube_summary_native.presentation.ui.auth.state.AuthState
 import com.example.youtube_summary_native.util.NetworkMonitor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,11 +21,11 @@ import javax.inject.Inject
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val loginUseCase: LoginUseCase,
     private val getSummaryUseCase: GetSummaryUseCase,
     private val deleteSummaryUseCase: DeleteSummaryUseCase,
-    private val requestSummaryUseCase: RequestSummaryUseCase, // 추가
-    private val networkMonitor: NetworkMonitor
+    private val requestSummaryUseCase: RequestSummaryUseCase,
+    private val networkMonitor: NetworkMonitor,
+    private val authViewModel: AuthViewModel
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeScreenState())
@@ -41,6 +44,8 @@ class HomeViewModel @Inject constructor(
             initializeHomeScreen()
             // 네트워크 상태 관찰 시작
             observeNetworkState()
+            // Auth 상태 관찰 시작
+            observeAuthState()
         }
     }
 
@@ -55,7 +60,9 @@ class HomeViewModel @Inject constructor(
                 _isOfflineMode.value = !isConnected
 
                 if (isConnected) {
-                    getSummaryUseCase().let { result ->
+                    getSummaryUseCase(
+                        username = uiState.value.userInfo?.username
+                    ).let { result ->
                         when (result) {
                             is GetSummaryUseCase.Result.Success -> {
                                 _uiState.update { currentState ->
@@ -83,6 +90,46 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    private fun observeAuthState() {
+        viewModelScope.launch {
+            authViewModel.authState.collect { authState ->
+                when (authState) {
+                    is AuthState.Authenticated -> {
+                        updateLoginState(
+                            isLoginUser = true,
+                            isAdmin = authState.userInfo.isAdmin,
+                            userInfo = authState.userInfo
+                        )
+                        // 로그인 상태에서 데이터 새로고침
+                        initializeHomeScreen()
+                    }
+                    is AuthState.Unauthenticated -> {
+                        updateLoginState(
+                            isLoginUser = false,
+                            isAdmin = false,
+                            userInfo = null
+                        )
+                        // 로그아웃 상태에서 데이터 새로고침
+                        initializeHomeScreen()
+                    }
+                    else -> {
+                        // 다른 상태 처리
+                    }
+                }
+            }
+        }
+    }
+
+    fun updateLoginState(isLoginUser: Boolean, isAdmin: Boolean, userInfo: UserInfo?) {
+        _uiState.update { currentState ->
+            currentState.copy(
+                isLoginUser = isLoginUser,
+                isAdmin = isAdmin,
+                userInfo = userInfo
+            )
+        }
+    }
+
     fun requestSummary(url: String, videoId: String) {
         viewModelScope.launch {
             try {
@@ -91,23 +138,16 @@ class HomeViewModel @Inject constructor(
                 when (val result = requestSummaryUseCase(
                     url = url,
                     videoId = videoId,
-                    username = null // 필요한 경우 사용자 이름 추가
+                    username = uiState.value.userInfo?.username // 로그인된 사용자의 username 전달
                 )) {
                     is RequestSummaryUseCase.Result.Success -> {
-                        _uiState.update {
-                            it.copy(
-                                isLoading = false
-                            )
-                        }
-                        // 요약이 성공적으로 시작됨
+                        _uiState.update { it.copy(isLoading = false) }
                         Log.d("HomeViewModel", "Summary request successful")
-                        // 요약 성공 후 최신 데이터로 업데이트
                         initializeHomeScreen()
                     }
                     is RequestSummaryUseCase.Result.Error -> {
                         _uiState.update { it.copy(isLoading = false) }
                         Log.e("HomeViewModel", "Summary request failed", result.exception)
-                        // 에러 처리
                     }
                     is RequestSummaryUseCase.Result.Loading -> {
                         _uiState.update { it.copy(isLoading = true) }

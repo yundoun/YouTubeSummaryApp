@@ -2,6 +2,7 @@ package com.example.youtube_summary_native.core.di
 
 import android.util.Log
 import com.example.youtube_summary_native.config.env.AppConfig
+import com.example.youtube_summary_native.core.data.remote.api.AuthApi
 import com.example.youtube_summary_native.core.data.remote.api.SummaryApi
 import com.example.youtube_summary_native.core.data.remote.api.UserApi
 import com.example.youtube_summary_native.core.data.remote.interceptor.AuthInterceptor
@@ -97,5 +98,11 @@ object NetworkModule {
     @Singleton
     fun provideUserApi(retrofit: Retrofit): UserApi {
         return retrofit.create(UserApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAuthApi(retrofit: Retrofit): AuthApi {
+        return retrofit.create(AuthApi::class.java)
     }
 }

@@ -10,7 +10,6 @@ object ApiConstants {
     // Users
     const val SUMMARY_USERS_ENDPOINT = "/summary/users"
     const val SUMMARY_USERS_ALL_ENDPOINT = "/summary/users/all"
-    const val SUMMARY_USERS_LOGIN_ENDPOINT = "/summary/users/login"
 
     // Ping
     const val SUMMARY_PING_ENDPOINT = "/summary/ws/ping"

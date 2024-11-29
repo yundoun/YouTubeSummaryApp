@@ -18,6 +18,7 @@ import com.example.youtube_summary_native.presentation.ui.auth.screens.LoginScre
 @Composable
 fun AuthScreen(
     onDismissRequest: () -> Unit,
+    onLoginSuccess: () -> Unit
 ) {
     var showLogin by remember { mutableStateOf(true) }
 
@@ -49,14 +50,15 @@ fun AuthScreen(
                         fadeIn(animationSpec = tween(400)) togetherWith
                                 fadeOut(animationSpec = tween(400))
                     },
-                    modifier = Modifier.padding(AppDimensions.LargePadding)
+                    modifier = Modifier.padding(AppDimensions.LargePadding), label = ""
                 ) { isLogin ->
                     if (isLogin) {
                         LoginScreen(
                             onRegisterRequest = { showLogin = false },
+                            onLoginSuccess = onLoginSuccess,
                             onDismiss = onDismissRequest
                         )
-                    } else {
+                    }else {
                         RegisterScreen(
                             onLoginRequest = { showLogin = true },
                             onDismiss = onDismissRequest

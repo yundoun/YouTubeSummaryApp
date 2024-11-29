@@ -1,43 +1,33 @@
 package com.example.youtube_summary_native.core.data.remote.api
 
 import com.example.youtube_summary_native.core.constants.ApiConstants
-import com.example.youtube_summary_native.core.domain.model.auth.LoginResponse
-import com.example.youtube_summary_native.core.domain.model.auth.TokenResponse
-import com.example.youtube_summary_native.core.domain.model.user.AllUsers
-import com.example.youtube_summary_native.core.domain.model.user.UserResponse
+import com.example.youtube_summary_native.core.data.remote.dto.*
 import retrofit2.http.*
 
 interface UserApi {
-    @POST(ApiConstants.SUMMARY_USERS_ENDPOINT)
-    suspend fun postUserInfo(
-        @Body request: Map<String, String>
-    ): UserResponse
+    @GET(ApiConstants.SUMMARY_USERS_ENDPOINT)
+    suspend fun getUser(
+        @Query("username") username: String,
+        @Header("Authorization") token: String
+    ): UserResponseDto
 
     @GET(ApiConstants.SUMMARY_USERS_ALL_ENDPOINT)
-    suspend fun getUserInfoAll(): AllUsers
+    suspend fun getAllUsers(): AllUsersResponseDto
 
-    @GET(ApiConstants.SUMMARY_USERS_ENDPOINT)
-    suspend fun getUserInfo(
-        @Query("username") username: String
-    ): UserResponse
+    @POST(ApiConstants.SUMMARY_USERS_ENDPOINT)
+    suspend fun createUser(
+        @Body userRequest: LoginRequestDto
+    ): UserResponseDto
 
     @DELETE(ApiConstants.SUMMARY_USERS_ENDPOINT)
-    suspend fun deleteUserInfo(
-        @Query("id") userId: Int
-    ): UserResponse
+    suspend fun deleteUser(
+        @Query("user_id") userId: Int,
+        @Header("Authorization") token: String
+    ): UserResponseDto
 
-    @POST(ApiConstants.AUTH_LOGIN_ENDPOINT)
-    suspend fun login(
-        @Body request: Map<String, String>
-    ): LoginResponse
-
-    @POST(ApiConstants.AUTH_REFRESH_ENDPOINT)
-    suspend fun refreshToken(
-        @Body request: Map<String, String>
-    ): TokenResponse
-
-    @POST(ApiConstants.AUTH_LOGOUT_ENDPOINT)
-    suspend fun logout(
-        @Body request: Map<String, Int>
-    )
+    @PUT("${ApiConstants.SUMMARY_USERS_ENDPOINT}/{userId}/set_admin")
+    suspend fun setAdmin(
+        @Path("userId") userId: Int,
+        @Header("Authorization") token: String
+    ): UserResponseDto
 }

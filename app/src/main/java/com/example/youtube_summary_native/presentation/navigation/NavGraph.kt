@@ -35,6 +35,10 @@ fun NavGraph(
             AuthScreen(
                 onDismissRequest = {
                     navController.navigateUp()
+                },
+                onLoginSuccess = {
+                    // 로그인 성공 시 이전 화면으로 돌아가고 백스택에서 Auth 화면 제거
+                    navController.popBackStack()
                 }
             )
         }

@@ -9,20 +9,35 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.youtube_summary_native.core.constants.AppDimensions
+import com.example.youtube_summary_native.core.presentation.auth.AuthViewModel
+import com.example.youtube_summary_native.presentation.ui.auth.state.AuthEvent
+import com.example.youtube_summary_native.presentation.ui.auth.state.AuthState
 import com.example.youtube_summary_native.presentation.ui.auth.widget.AuthTextField
 
 @Composable
 fun LoginScreen(
     onRegisterRequest: () -> Unit,
+    onLoginSuccess: () -> Unit,
     modifier: Modifier = Modifier,
     onDismiss: () -> Unit,
+    viewModel: AuthViewModel = hiltViewModel()
 ) {
-    var username by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    val authState by viewModel.authState.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
+
+    // 인증 상태 모니터링
+    LaunchedEffect(authState) {
+        when (authState) {
+            is AuthState.Authenticated -> {
+                onLoginSuccess()
+            }
+            else -> {}
+        }
+    }
+
     var isPasswordVisible by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    var isLoading by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -65,7 +80,7 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(AppDimensions.DefaultPadding))
 
         // Error message
-        errorMessage?.let { error ->
+        uiState.errorMessage?.let { error ->
             Surface(
                 color = MaterialTheme.colorScheme.errorContainer,
                 shape = MaterialTheme.shapes.medium,
@@ -103,11 +118,11 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(AppDimensions.DefaultPadding))
 
             AuthTextField(
-                value = username,
-                onValueChange = { username = it },
+                value = uiState.username,
+                onValueChange = { viewModel.onEvent(AuthEvent.OnUsernameChange(it)) },
                 label = "사용자 이름",
                 leadingIcon = Icons.Rounded.Person,
-                enabled = !isLoading
+                enabled = !uiState.isLoading
             )
 
             Spacer(modifier = Modifier.height(AppDimensions.DefaultPadding))
@@ -121,14 +136,14 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(AppDimensions.DefaultPadding))
 
             AuthTextField(
-                value = password,
-                onValueChange = { password = it },
+                value = uiState.password,
+                onValueChange = { viewModel.onEvent(AuthEvent.OnPasswordChange(it)) },
                 label = "비밀번호",
                 leadingIcon = Icons.Rounded.Lock,
                 isPassword = true,
                 isPasswordVisible = isPasswordVisible,
                 onTogglePasswordVisibility = { isPasswordVisible = !isPasswordVisible },
-                enabled = !isLoading
+                enabled = !uiState.isLoading
             )
         }
 
@@ -136,14 +151,14 @@ fun LoginScreen(
 
         // Login Button
         Button(
-            onClick = { /* TODO: Implement login logic */ },
+            onClick = { viewModel.onEvent(AuthEvent.OnLogin) },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
-            enabled = !isLoading,
+            enabled = !uiState.isLoading,
             shape = MaterialTheme.shapes.medium
         ) {
-            if (isLoading) {
+            if (uiState.isLoading) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(24.dp),
                     color = MaterialTheme.colorScheme.onPrimary

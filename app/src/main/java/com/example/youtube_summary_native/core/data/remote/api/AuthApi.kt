@@ -1,18 +1,23 @@
 package com.example.youtube_summary_native.core.data.remote.api
 
-import com.example.youtube_summary_native.core.data.remote.dto.LoginResponseDto
-import com.example.youtube_summary_native.core.data.remote.dto.TokenResponseDto
-import retrofit2.http.Body
-import retrofit2.http.POST
+import com.example.youtube_summary_native.core.constants.ApiConstants
+import com.example.youtube_summary_native.core.data.remote.dto.*
+import retrofit2.http.*
 
 interface AuthApi {
-    @POST("auth/login")
+    @POST(ApiConstants.AUTH_LOGIN_ENDPOINT)
     suspend fun login(
-        @Body request: Map<String, String>
+        @Body loginRequest: LoginRequestDto
     ): LoginResponseDto
 
-    @POST("auth/refresh")
+    @POST(ApiConstants.AUTH_REFRESH_ENDPOINT)
     suspend fun refreshToken(
-        @Body request: Map<String, String>
+        @Body refreshTokenRequest: RefreshTokenRequestDto
     ): TokenResponseDto
+
+    @POST(ApiConstants.AUTH_LOGOUT_ENDPOINT)
+    suspend fun logout(
+        @Body logoutRequest: LogoutRequestDto,
+        @Header("Authorization") token: String
+    )
 }

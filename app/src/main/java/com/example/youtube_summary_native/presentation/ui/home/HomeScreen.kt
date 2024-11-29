@@ -16,20 +16,26 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.youtube_summary_native.core.constants.ApiConstants
 import com.example.youtube_summary_native.core.constants.AppDimensions
+import com.example.youtube_summary_native.core.presentation.auth.AuthViewModel
 import com.example.youtube_summary_native.core.presentation.ui.common.LoginButton
 import com.example.youtube_summary_native.core.presentation.ui.common.dialog.DeleteDialog
 import com.example.youtube_summary_native.core.presentation.ui.home.components.HomeRecentSummary
 import com.example.youtube_summary_native.presentation.ui.home.widget.HomeSearchBar
 import com.example.youtube_summary_native.core.presentation.ui.home.components.HomeStartSummary
+import com.example.youtube_summary_native.presentation.ui.auth.state.AuthState
 
 @Composable
 fun HomeScreen(
     onNavigateToSummary: (String) -> Unit,
     onNavigateToAuth: () -> Unit,
-    viewModel: HomeViewModel = hiltViewModel()
+    homeViewModel: HomeViewModel = hiltViewModel(),
+    authViewModel: AuthViewModel = hiltViewModel() // AuthViewModel 가져옴
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val isOfflineMode by viewModel.isOfflineMode.collectAsStateWithLifecycle()
+    // 상태를 각 ViewModel에서 관찰합니다.
+    val uiState by homeViewModel.uiState.collectAsStateWithLifecycle()
+    val isOfflineMode by homeViewModel.isOfflineMode.collectAsStateWithLifecycle()
+    val authState by authViewModel.authState.collectAsStateWithLifecycle()
+
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.dp
 
@@ -44,9 +50,15 @@ fun HomeScreen(
     LaunchedEffect(listState) {
         snapshotFlow { listState.firstVisibleItemIndex }
             .collect { index ->
-                viewModel.setGridScrollState(index > 0)
+                homeViewModel.setGridScrollState(index > 0)
             }
     }
+
+    // 로그인 상태를 화면에서 처리하고 HomeViewModel에 상태 전달
+    val isLoginUser = authState is AuthState.Authenticated
+    val isAdmin = if (authState is AuthState.Authenticated) {
+        (authState as AuthState.Authenticated).userInfo.isAdmin
+    } else false
 
     // Main scaffold
     Scaffold(
@@ -54,9 +66,8 @@ fun HomeScreen(
             if (!uiState.homeScrollState && uiState.recentSummaryState.gridScrollState) {
                 FloatingActionButton(
                     onClick = {
-                        viewModel.setHomeScrollState(true)
-                        viewModel.setGridScrollState(false)
-//                        listState.animateScrollToItem(0)
+                        homeViewModel.setHomeScrollState(true)
+                        homeViewModel.setGridScrollState(false)
                     }
                 ) {
                     Icon(
@@ -106,10 +117,10 @@ fun HomeScreen(
                     // Search Bar
                     HomeSearchBar(
                         homeScreenState = uiState,
-                        onTextChanged = viewModel::setSearchText,
-                        onTextClear = { viewModel.setSearchText("") },
+                        onTextChanged = homeViewModel::setSearchText,
+                        onTextClear = { homeViewModel.setSearchText("") },
                         onPaste = { /* Implement clipboard paste */ },
-                        onFocusChanged = viewModel::setSearchFocus,
+                        onFocusChanged = homeViewModel::setSearchFocus,
                         isOfflineMode = isOfflineMode,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -117,7 +128,7 @@ fun HomeScreen(
                     // Offline mode retry button
                     if (isOfflineMode) {
                         Button(
-                            onClick = viewModel::retryConnection,
+                            onClick = homeViewModel::retryConnection,
                             modifier = Modifier.padding(top = AppDimensions.LargePadding)
                         ) {
                             Icon(
@@ -141,31 +152,31 @@ fun HomeScreen(
                                 videoId = uiState.videoId,
                                 isOfflineMode = isOfflineMode,
                                 onStartSummaryClick = {
-                                    viewModel.requestSummary(
+                                    homeViewModel.requestSummary(
                                         url = "${ApiConstants.DEFAULT_YOUTUBE_URL}?v=${uiState.videoId}",
                                         videoId = uiState.videoId
                                     )
                                     onNavigateToSummary(uiState.videoId)
-                                    viewModel.setSearchText("")
+                                    homeViewModel.setSearchText("")
                                 }
                             )
                         } else {
                             // Show recent summaries section
                             HomeRecentSummary(
                                 homeScreenState = uiState,
-                                summaries = uiState.summaries, // summaries 전달 추가
-                                isLoading = uiState.isLoading, // ViewModel의 로딩 상태를 이용하도록 수정
-                                isAdmin = uiState.isAdmin, // Admin 상태 추가
-                                isLoginUser = uiState.isLoginUser, // 로그인 상태 추가
+                                summaries = uiState.summaries,
+                                isLoading = uiState.isLoading,
+                                isAdmin = isAdmin,
+                                isLoginUser = isLoginUser,
                                 isOfflineMode = isOfflineMode,
-                                onEditClick = viewModel::toggleEditMode,
+                                onEditClick = homeViewModel::toggleEditMode,
                                 onDeleteAllClick = {
                                     videoIdToDelete = null
                                     showDeleteDialog = true
                                 },
-                                onSortClick = viewModel::switchGridSortState,
+                                onSortClick = homeViewModel::switchGridSortState,
                                 onItemClick = { videoId ->
-                                    viewModel.setSearchText("")
+                                    homeViewModel.setSearchText("")
                                     onNavigateToSummary(videoId)
                                 },
                                 onDeleteClick = { videoId ->
@@ -173,7 +184,6 @@ fun HomeScreen(
                                     showDeleteDialog = true
                                 }
                             )
-
                         }
                     }
                 }
@@ -188,9 +198,9 @@ fun HomeScreen(
             videoId = videoIdToDelete,
             onConfirm = {
                 if (videoIdToDelete != null) {
-                    viewModel.deleteSummary(videoIdToDelete!!)
+                    homeViewModel.deleteSummary(videoIdToDelete!!)
                 } else {
-                    viewModel.deleteAllSummaries()
+                    homeViewModel.deleteAllSummaries()
                 }
                 showDeleteDialog = false
                 videoIdToDelete = null
@@ -202,3 +212,4 @@ fun HomeScreen(
         )
     }
 }
+

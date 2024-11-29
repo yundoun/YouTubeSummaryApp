@@ -1,6 +1,7 @@
 package com.example.youtube_summary_native.core.data.repository
 
 import android.util.Log
+import com.example.youtube_summary_native.core.data.local.TokenManager
 import com.example.youtube_summary_native.core.data.mapper.toDomain
 import com.example.youtube_summary_native.core.data.remote.api.SummaryApi
 import com.example.youtube_summary_native.core.data.remote.websocket.WebSocketManager
@@ -15,15 +16,24 @@ import javax.inject.Inject
 
 class SummaryRepositoryImpl @Inject constructor(
     private val summaryApi: SummaryApi,
-    private val webSocketManager: WebSocketManager
+    private val webSocketManager: WebSocketManager,
+    private val tokenManager: TokenManager
 ) : SummaryRepository {
 
     private val _webSocketMessages = MutableSharedFlow<Pair<String, String>>()
     override val webSocketMessages: Flow<Pair<String, String>> = _webSocketMessages
 
+    private suspend fun getAuthorizationHeader(): String? {
+        val token = tokenManager.getAccessToken()
+        return if (token != null) "Bearer $token" else null
+    }
+
     override suspend fun getSummaryInfoAll(username: String?): AllSummaries {
         return try {
-            val response = summaryApi.getSummaryInfoAll(username)
+            val response = summaryApi.getSummaryInfoAll(
+                username = username,
+                authorization = getAuthorizationHeader()
+            )
             response.toDomain().also { result ->
                 Log.d(
                     "SummaryRepositoryImpl",
@@ -40,7 +50,10 @@ class SummaryRepositoryImpl @Inject constructor(
 
     override suspend fun getSummaryInfo(videoId: String): SummaryResponse {
         return try {
-            summaryApi.getSummaryInfo(videoId).toDomain()
+            summaryApi.getSummaryInfo(
+                videoId = videoId,
+                authorization = getAuthorizationHeader()
+            ).toDomain()
         } catch (e: Exception) {
             throw Exception("Failed to load summary info: ${e.message}")
         }
@@ -48,9 +61,11 @@ class SummaryRepositoryImpl @Inject constructor(
 
     override suspend fun postSummaryInfo(keyUrl: String, username: String?): SummaryResponse {
         return try {
-            // 요청 본문을 객체로 만들어 전송
             val request = SummaryRequest(keyUrl, username)
-            summaryApi.postSummaryInfo(request).toDomain()
+            summaryApi.postSummaryInfo(
+                request = request,
+                authorization = getAuthorizationHeader()
+            ).toDomain()
         } catch (e: Exception) {
             throw Exception("Failed to post summary info: ${e.message}")
         }
@@ -58,7 +73,11 @@ class SummaryRepositoryImpl @Inject constructor(
 
     override suspend fun deleteSummaryInfo(videoId: String, username: String?): String {
         return try {
-            summaryApi.deleteSummaryInfo(videoId, username)
+            summaryApi.deleteSummaryInfo(
+                videoId = videoId,
+                username = username,
+                authorization = getAuthorizationHeader()
+            )
         } catch (e: Exception) {
             throw Exception("Failed to delete summary info: ${e.message}")
         }
@@ -66,7 +85,9 @@ class SummaryRepositoryImpl @Inject constructor(
 
     override suspend fun deleteSummaryInfoAll(): String {
         return try {
-            summaryApi.deleteSummaryInfoAll()
+            summaryApi.deleteSummaryInfoAll(
+                authorization = getAuthorizationHeader()
+            )
         } catch (e: Exception) {
             throw Exception("Failed to delete all summaries: ${e.message}")
         }

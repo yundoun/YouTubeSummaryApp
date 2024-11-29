@@ -9,7 +9,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.youtube_summary_native.core.constants.AppDimensions
+import com.example.youtube_summary_native.core.presentation.auth.AuthViewModel
+import com.example.youtube_summary_native.presentation.ui.auth.state.AuthEvent
+import com.example.youtube_summary_native.presentation.ui.auth.state.AuthState
 import com.example.youtube_summary_native.presentation.ui.auth.widget.AuthTextField
 
 @Composable
@@ -17,14 +22,22 @@ fun RegisterScreen(
     onLoginRequest: () -> Unit,
     modifier: Modifier = Modifier,
     onDismiss: () -> Unit,
+    viewModel: AuthViewModel = hiltViewModel()
 ) {
-    var username by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
+    val authState by viewModel.authState.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var isPasswordVisible by remember { mutableStateOf(false) }
     var isConfirmPasswordVisible by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    var isLoading by remember { mutableStateOf(false) }
+
+    // 회원가입 성공 시 처리할 효과
+    LaunchedEffect(authState) {
+        when (authState) {
+            is AuthState.RegistrationSuccess -> {
+                onLoginRequest() // 회원가입 성공 후 로그인 화면으로 이동
+            }
+            else -> {} // 필요한 경우 다른 상태를 처리
+        }
+    }
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -54,7 +67,8 @@ fun RegisterScreen(
             textAlign = TextAlign.Center
         )
 
-        errorMessage?.let { error ->
+        // 오류 메시지 표시
+        uiState.errorMessage?.let { error ->
             Spacer(modifier = Modifier.height(AppDimensions.DefaultPadding))
             Surface(
                 color = MaterialTheme.colorScheme.errorContainer,
@@ -99,12 +113,13 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(AppDimensions.DefaultPadding))
 
+            // 사용자 이름 입력 필드
             AuthTextField(
-                value = username,
-                onValueChange = { username = it },
+                value = uiState.username,
+                onValueChange = { viewModel.onEvent(AuthEvent.OnUsernameChange(it)) },
                 label = "사용자 이름",
                 leadingIcon = Icons.Rounded.Person,
-                enabled = !isLoading
+                enabled = !uiState.isLoading
             )
 
             Spacer(modifier = Modifier.height(AppDimensions.MediumPadding))
@@ -125,42 +140,48 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(AppDimensions.DefaultPadding))
 
+            // 비밀번호 입력 필드
             AuthTextField(
-                value = password,
-                onValueChange = { password = it },
+                value = uiState.password,
+                onValueChange = { viewModel.onEvent(AuthEvent.OnPasswordChange(it)) },
                 label = "비밀번호",
                 leadingIcon = Icons.Rounded.Lock,
                 isPassword = true,
                 isPasswordVisible = isPasswordVisible,
                 onTogglePasswordVisibility = { isPasswordVisible = !isPasswordVisible },
-                enabled = !isLoading
+                enabled = !uiState.isLoading
             )
 
             Spacer(modifier = Modifier.height(AppDimensions.DefaultPadding))
 
+            // 비밀번호 확인 입력 필드
             AuthTextField(
-                value = confirmPassword,
-                onValueChange = { confirmPassword = it },
+                value = uiState.confirmPassword,
+                onValueChange = { viewModel.onEvent(AuthEvent.OnConfirmPasswordChange(it)) },
                 label = "비밀번호 확인",
                 leadingIcon = Icons.Rounded.Lock,
                 isPassword = true,
                 isPasswordVisible = isConfirmPasswordVisible,
                 onTogglePasswordVisibility = { isConfirmPasswordVisible = !isConfirmPasswordVisible },
-                enabled = !isLoading
+                enabled = !uiState.isLoading
             )
         }
 
         Spacer(modifier = Modifier.height(AppDimensions.LargePadding))
 
+        // 회원가입 버튼
         Button(
-            onClick = { /* TODO: Implement register logic */ },
+            onClick = { viewModel.onEvent(AuthEvent.OnRegister) },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
-            enabled = !isLoading,
+            enabled = !uiState.isLoading &&
+                    uiState.username.isNotEmpty() &&
+                    uiState.password.isNotEmpty() &&
+                    uiState.confirmPassword.isNotEmpty(),
             shape = MaterialTheme.shapes.medium
         ) {
-            if (isLoading) {
+            if (uiState.isLoading) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(24.dp),
                     color = MaterialTheme.colorScheme.onPrimary
@@ -175,6 +196,7 @@ fun RegisterScreen(
 
         Spacer(modifier = Modifier.height(AppDimensions.DefaultPadding))
 
+        // 로그인 요청 버튼
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center,

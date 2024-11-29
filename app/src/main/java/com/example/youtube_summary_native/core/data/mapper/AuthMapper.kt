@@ -1,22 +1,22 @@
 package com.example.youtube_summary_native.core.data.mapper
 
+import com.example.youtube_summary_native.core.data.remote.dto.LoginRequestDto
 import com.example.youtube_summary_native.core.data.remote.dto.LoginResponseDto
 import com.example.youtube_summary_native.core.data.remote.dto.TokenResponseDto
-import com.example.youtube_summary_native.core.data.remote.dto.UserInfoDto
+import com.example.youtube_summary_native.core.data.remote.dto.LogoutRequestDto
 import com.example.youtube_summary_native.core.domain.model.auth.LoginResponse
 import com.example.youtube_summary_native.core.domain.model.auth.TokenResponse
-import com.example.youtube_summary_native.core.domain.model.user.UserInfo
 
-fun LoginResponseDto.toDomain(): LoginResponse {
+fun LoginResponseDto.toLoginResponse(): LoginResponse {
     return LoginResponse(
         accessToken = accessToken,
         refreshToken = refreshToken,
         tokenType = tokenType,
-        user = user.toDomain()
+        user = user.toUserInfo()
     )
 }
 
-fun TokenResponseDto.toDomain(): TokenResponse {
+fun TokenResponseDto.toTokenResponse(): TokenResponse {
     return TokenResponse(
         accessToken = accessToken,
         refreshToken = refreshToken,
@@ -24,11 +24,13 @@ fun TokenResponseDto.toDomain(): TokenResponse {
     )
 }
 
-fun UserInfoDto.toDomain(): UserInfo {
-    return UserInfo(
-        id = id,
-        username = username,
-        password = password,
-        isAdmin = isAdmin
+fun Pair<String, String>.toLoginRequestDto(): LoginRequestDto {
+    return LoginRequestDto(
+        username = first,
+        password = second
     )
+}
+
+fun Int.toLogoutRequestDto(): LogoutRequestDto {
+    return LogoutRequestDto(userId = this)
 }
