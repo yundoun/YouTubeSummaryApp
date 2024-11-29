@@ -116,6 +116,9 @@ dependencies {
     // YouTube Player
     implementation(libs.youtube.player)
 
+    // Compose Material Icons
+    implementation(libs.compose.material.icons.extended)
+
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

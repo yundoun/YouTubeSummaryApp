@@ -7,8 +7,10 @@ import com.example.youtube_summary_native.core.data.remote.websocket.WebSocketMa
 import com.example.youtube_summary_native.core.domain.model.summary.AllSummaries
 import com.example.youtube_summary_native.core.domain.model.summary.SummaryResponse
 import com.example.youtube_summary_native.core.domain.repository.SummaryRepository
+import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.serialization.Serializable
 import javax.inject.Inject
 
 class SummaryRepositoryImpl @Inject constructor(
@@ -46,7 +48,9 @@ class SummaryRepositoryImpl @Inject constructor(
 
     override suspend fun postSummaryInfo(keyUrl: String, username: String?): SummaryResponse {
         return try {
-            summaryApi.postSummaryInfo(keyUrl, username).toDomain()
+            // 요청 본문을 객체로 만들어 전송
+            val request = SummaryRequest(keyUrl, username)
+            summaryApi.postSummaryInfo(request).toDomain()
         } catch (e: Exception) {
             throw Exception("Failed to post summary info: ${e.message}")
         }
@@ -82,3 +86,10 @@ class SummaryRepositoryImpl @Inject constructor(
         webSocketManager.close()
     }
 }
+
+
+@Serializable
+data class SummaryRequest(
+    val url: String,
+    val username: String?
+)

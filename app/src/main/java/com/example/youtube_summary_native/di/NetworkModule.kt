@@ -11,6 +11,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import kotlinx.serialization.json.Json
+import okhttp3.Dispatcher
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -21,7 +22,7 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
-    private const val TIMEOUT_SECONDS = 10L
+    private const val TIMEOUT_SECONDS = 60L
 
     @Provides
     @Singleton
@@ -46,6 +47,15 @@ object NetworkModule {
                 Log.d("NetworkModule", "Response Code: ${response.code}")
                 Log.d("NetworkModule", "Response Body: ${response.peekBody(Long.MAX_VALUE).string()}")
                 response
+            }
+            .dispatcher(Dispatcher().apply {
+                // 동시 요청 수 제한
+                maxRequests = 1
+                maxRequestsPerHost = 1
+            })
+            .addInterceptor { chain ->
+                // 이전 요청 취소 로직 추가
+                chain.proceed(chain.request())
             }
             .addInterceptor(authInterceptor)
             .addInterceptor(loggingInterceptor)

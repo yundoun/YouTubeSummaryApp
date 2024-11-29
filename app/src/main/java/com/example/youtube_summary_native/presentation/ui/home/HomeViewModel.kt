@@ -1,4 +1,4 @@
-package com.example.youtube_summary_native.core.presentation.ui.home
+package com.example.youtube_summary_native.presentation.ui.home
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -7,6 +7,7 @@ import com.example.youtube_summary_native.core.domain.model.state.HomeScreenStat
 import com.example.youtube_summary_native.core.domain.usecase.auth.LoginUseCase
 import com.example.youtube_summary_native.core.domain.usecase.summary.DeleteSummaryUseCase
 import com.example.youtube_summary_native.core.domain.usecase.summary.GetSummaryUseCase
+import com.example.youtube_summary_native.core.domain.usecase.summary.RequestSummaryUseCase
 import com.example.youtube_summary_native.util.NetworkMonitor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +21,7 @@ class HomeViewModel @Inject constructor(
     private val loginUseCase: LoginUseCase,
     private val getSummaryUseCase: GetSummaryUseCase,
     private val deleteSummaryUseCase: DeleteSummaryUseCase,
+    private val requestSummaryUseCase: RequestSummaryUseCase, // 추가
     private val networkMonitor: NetworkMonitor
 ) : ViewModel() {
 
@@ -77,6 +79,43 @@ class HomeViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false) }
                 Log.e("HomeViewModel", "Failed to initialize home screen", e)
+            }
+        }
+    }
+
+    fun requestSummary(url: String, videoId: String) {
+        viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(isLoading = true) }
+
+                when (val result = requestSummaryUseCase(
+                    url = url,
+                    videoId = videoId,
+                    username = null // 필요한 경우 사용자 이름 추가
+                )) {
+                    is RequestSummaryUseCase.Result.Success -> {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false
+                            )
+                        }
+                        // 요약이 성공적으로 시작됨
+                        Log.d("HomeViewModel", "Summary request successful")
+                        // 요약 성공 후 최신 데이터로 업데이트
+                        initializeHomeScreen()
+                    }
+                    is RequestSummaryUseCase.Result.Error -> {
+                        _uiState.update { it.copy(isLoading = false) }
+                        Log.e("HomeViewModel", "Summary request failed", result.exception)
+                        // 에러 처리
+                    }
+                    is RequestSummaryUseCase.Result.Loading -> {
+                        _uiState.update { it.copy(isLoading = true) }
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false) }
+                Log.e("HomeViewModel", "Failed to request summary", e)
             }
         }
     }
@@ -183,6 +222,11 @@ class HomeViewModel @Inject constructor(
 
     fun retryConnection() {
         initializeHomeScreen()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        requestSummaryUseCase.closeWebSocket()
     }
 
     private fun extractVideoId(url: String): String {

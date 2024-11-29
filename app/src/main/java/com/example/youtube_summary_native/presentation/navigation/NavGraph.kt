@@ -7,7 +7,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.youtube_summary_native.core.constants.AppRoutes
-import com.example.youtube_summary_native.core.presentation.ui.home.HomeScreen
+import com.example.youtube_summary_native.presentation.ui.auth.AuthScreen
+import com.example.youtube_summary_native.presentation.ui.home.HomeScreen
 import com.example.youtube_summary_native.presentation.ui.summary.SummaryScreen
 
 @Composable
@@ -25,7 +26,15 @@ fun NavGraph(
                     navController.navigate(AppRoutes.createSummaryRoute(videoId))
                 },
                 onNavigateToAuth = {
-                    // TODO: Implement auth navigation
+                    navController.navigate(AppRoutes.AUTH_ROUTE)
+                }
+            )
+        }
+
+        composable(AppRoutes.AUTH_ROUTE) {
+            AuthScreen(
+                onDismissRequest = {
+                    navController.navigateUp()
                 }
             )
         }

@@ -3,6 +3,7 @@ package com.example.youtube_summary_native.core.data.remote.api
 import com.example.youtube_summary_native.core.constants.ApiConstants
 import com.example.youtube_summary_native.core.data.remote.dto.AllSummariesDto
 import com.example.youtube_summary_native.core.data.remote.dto.SummaryResponseDto
+import com.example.youtube_summary_native.core.data.repository.SummaryRequest
 import com.example.youtube_summary_native.core.domain.model.summary.AllSummaries
 import com.example.youtube_summary_native.core.domain.model.summary.SummaryResponse
 import retrofit2.http.Body
@@ -24,8 +25,7 @@ interface SummaryApi {
 
     @POST(ApiConstants.SUMMARY_CONTENT_ENDPOINT)
     suspend fun postSummaryInfo(
-        @Body url: String,
-        @Query("username") username: String?
+        @Body request: SummaryRequest
     ): SummaryResponseDto
 
     @DELETE(ApiConstants.SUMMARY_CONTENT_ENDPOINT)

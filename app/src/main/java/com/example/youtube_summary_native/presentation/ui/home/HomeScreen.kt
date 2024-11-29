@@ -1,4 +1,4 @@
-package com.example.youtube_summary_native.core.presentation.ui.home
+package com.example.youtube_summary_native.presentation.ui.home
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
@@ -14,6 +14,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.youtube_summary_native.core.constants.ApiConstants
 import com.example.youtube_summary_native.core.constants.AppDimensions
 import com.example.youtube_summary_native.core.presentation.ui.common.LoginButton
 import com.example.youtube_summary_native.core.presentation.ui.common.dialog.DeleteDialog
@@ -136,11 +137,14 @@ fun HomeScreen(
                                 (!uiState.searchBarState.isFocused && uiState.videoId.isEmpty())
                     ) {
                         if (uiState.videoId.isNotEmpty()) {
-                            // Show start summary section
                             HomeStartSummary(
                                 videoId = uiState.videoId,
                                 isOfflineMode = isOfflineMode,
                                 onStartSummaryClick = {
+                                    viewModel.requestSummary(
+                                        url = "${ApiConstants.DEFAULT_YOUTUBE_URL}?v=${uiState.videoId}",
+                                        videoId = uiState.videoId
+                                    )
                                     onNavigateToSummary(uiState.videoId)
                                     viewModel.setSearchText("")
                                 }

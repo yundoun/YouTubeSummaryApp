@@ -10,6 +10,16 @@ object AppRoutes {
     const val SUMMARY = "summary"
     const val SETTING = "setting"
 
+    // Auth related routes
+    const val AUTH_ROUTE = "auth"
+    const val LOGIN_ROUTE = "auth/login"
+    const val REGISTER_ROUTE = "auth/register"
+
+    // Route names 섹션에 추가
+    const val AUTH = "auth"
+    const val LOGIN = "login"
+    const val REGISTER = "register"
+
     // 내비게이션 할 때
     // SummaryScreen으로 이동할 때 사용하는 전체 경로 문자열 생성
     // summary/{videoId} 이런 식으로 경로 생성됨
