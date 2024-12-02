@@ -187,12 +187,14 @@ class HomeViewModel @Inject constructor(
 
     fun deleteSummary(videoId: String) {
         viewModelScope.launch {
-            when (val result = deleteSummaryUseCase.deleteSingle(videoId)) {
+            val username = uiState.value.userInfo?.username  // 현재 로그인된 사용자의 username 가져오기
+            when (val result = deleteSummaryUseCase.deleteSingle(videoId, username)) {
                 is DeleteSummaryUseCase.Result.Success -> {
                     initializeHomeScreen()
                 }
                 is DeleteSummaryUseCase.Result.Error -> {
                     // Handle error
+                    Log.e("HomeViewModel", "Failed to delete summary", result.exception)
                 }
             }
         }

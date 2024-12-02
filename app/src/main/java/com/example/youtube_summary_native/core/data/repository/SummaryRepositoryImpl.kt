@@ -68,11 +68,12 @@ class SummaryRepositoryImpl @Inject constructor(
 
     override suspend fun deleteSummaryInfo(videoId: String, username: String?): String {
         return try {
-            summaryApi.deleteSummaryInfo(
+            val response = summaryApi.deleteSummaryInfo(
                 videoId = videoId,
                 username = username,
                 authorization = getAuthorizationHeader()
             )
+            response.message  // 응답의 message 필드만 반환
         } catch (e: Exception) {
             throw Exception("Failed to delete summary info: ${e.message}")
         }

@@ -30,7 +30,7 @@ interface SummaryApi {
         @Query("video_id") videoId: String,
         @Query("username") username: String?,
         @Header("Authorization") authorization: String? = null
-    ): String
+    ): SummaryResponseDto  // String에서 SummaryResponseDto로 변경
 
     @DELETE(ApiConstants.SUMMARY_CONTENT_ALL_ENDPOINT)
     suspend fun deleteSummaryInfoAll(
