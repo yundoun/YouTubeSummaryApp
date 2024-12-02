@@ -30,18 +30,13 @@ class SummaryRepositoryImpl @Inject constructor(
 
     override suspend fun getSummaryInfoAll(username: String?): AllSummaries {
         return try {
+            // 토큰이 있을 때만 authorization 헤더 추가
+            val auth = if (username != null) getAuthorizationHeader() else null
             val response = summaryApi.getSummaryInfoAll(
                 username = username,
-                authorization = getAuthorizationHeader()
+                authorization = auth
             )
-            response.toDomain().also { result ->
-                Log.d(
-                    "SummaryRepositoryImpl",
-                    "Converted response - status: ${result.status}, " +
-                            "list size: ${result.summaryList.size}, " +
-                            "message: ${result.message}"
-                )
-            }
+            response.toDomain()
         } catch (e: Exception) {
             Log.e("SummaryRepositoryImpl", "Error in getSummaryInfoAll", e)
             throw Exception("Failed to load all summaries: ${e.message}")

@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import javax.inject.Named
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -25,7 +26,7 @@ class HomeViewModel @Inject constructor(
     private val deleteSummaryUseCase: DeleteSummaryUseCase,
     private val requestSummaryUseCase: RequestSummaryUseCase,
     private val networkMonitor: NetworkMonitor,
-    private val authViewModel: AuthViewModel
+    @Named("authMutableStateFlow") private val authStateFlow: MutableStateFlow<AuthState>
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeScreenState())
@@ -54,33 +55,43 @@ class HomeViewModel @Inject constructor(
             try {
                 _uiState.update { it.copy(isLoading = true) }
 
-                // 네트워크 모니터 초기화
-                networkMonitor.initialize()
                 val isConnected = networkMonitor.isOnline()
                 _isOfflineMode.value = !isConnected
 
                 if (isConnected) {
+                    // 현재 인증 상태 확인
+                    val currentAuthState = authStateFlow.value
+
+                    // 인증 상태와 관계없이 getSummaryUseCase 호출
                     getSummaryUseCase(
-                        username = uiState.value.userInfo?.username
+                        username = if (currentAuthState is AuthState.Authenticated)
+                            currentAuthState.userInfo.username
+                        else null
                     ).let { result ->
                         when (result) {
                             is GetSummaryUseCase.Result.Success -> {
                                 _uiState.update { currentState ->
                                     currentState.copy(
-                                        homeScrollState = true,
-                                        summaries = result.summaries.summaryList ?: emptyList(),
+                                        summaries = result.summaries.summaryList,
                                         isLoading = false
                                     )
                                 }
                             }
                             is GetSummaryUseCase.Result.Error -> {
                                 _uiState.update { it.copy(isLoading = false) }
-                                Log.e("HomeViewModel", "Failed to get summaries", result.exception)
+                                Log.e("HomeViewModel", "Failed to load summaries", result.exception)
                             }
                             GetSummaryUseCase.Result.Loading -> {
                                 _uiState.update { it.copy(isLoading = true) }
                             }
                         }
+                    }
+                } else {
+                    _uiState.update { currentState ->
+                        currentState.copy(
+                            summaries = emptyList(),
+                            isLoading = false
+                        )
                     }
                 }
             } catch (e: Exception) {
@@ -92,7 +103,7 @@ class HomeViewModel @Inject constructor(
 
     private fun observeAuthState() {
         viewModelScope.launch {
-            authViewModel.authState.collect { authState ->
+            authStateFlow.collect { authState ->
                 when (authState) {
                     is AuthState.Authenticated -> {
                         updateLoginState(
@@ -120,7 +131,7 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun updateLoginState(isLoginUser: Boolean, isAdmin: Boolean, userInfo: UserInfo?) {
+    private fun updateLoginState(isLoginUser: Boolean, isAdmin: Boolean, userInfo: UserInfo?) {
         _uiState.update { currentState ->
             currentState.copy(
                 isLoginUser = isLoginUser,
