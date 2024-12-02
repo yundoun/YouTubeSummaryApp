@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import javax.inject.Named
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
@@ -24,10 +25,10 @@ class AuthViewModel @Inject constructor(
     private val logoutUseCase: LogoutUseCase,
     private val refreshTokenUseCase: RefreshTokenUseCase,
     private val getTokensUseCase: GetTokensUseCase,
-    private val createUserUseCase: CreateUserUseCase
+    private val createUserUseCase: CreateUserUseCase,
+    @Named("authMutableStateFlow") private val _authState: MutableStateFlow<AuthState>
 ) : ViewModel() {
-
-    private val _authState = MutableStateFlow<AuthState>(AuthState.Initial)
+    // authState를 외부에 노출
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
 
     private val _uiState = MutableStateFlow(AuthUiState())

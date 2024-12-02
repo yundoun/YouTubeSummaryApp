@@ -1,5 +1,6 @@
 package com.example.youtube_summary_native.di
 
+import com.example.youtube_summary_native.core.data.local.TokenManager
 import com.example.youtube_summary_native.core.domain.repository.AuthRepository
 import com.example.youtube_summary_native.core.domain.repository.SummaryRepository
 import com.example.youtube_summary_native.core.domain.repository.UserRepository
@@ -20,12 +21,12 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object UseCaseModule {
-    // 기존 UseCase
     @Provides
     @Singleton
     fun provideGetSummaryUseCase(
-        summaryRepository: SummaryRepository
-    ): GetSummaryUseCase = GetSummaryUseCase(summaryRepository)
+        summaryRepository: SummaryRepository,
+        tokenManager: TokenManager  // TokenManager 주입 추가
+    ): GetSummaryUseCase = GetSummaryUseCase(summaryRepository, tokenManager)
 
     @Provides
     @Singleton

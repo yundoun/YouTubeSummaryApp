@@ -1,11 +1,13 @@
 package com.example.youtube_summary_native.core.domain.usecase.summary
 
+import com.example.youtube_summary_native.core.data.local.TokenManager
 import com.example.youtube_summary_native.core.domain.model.summary.AllSummaries
 import com.example.youtube_summary_native.core.domain.repository.SummaryRepository
 import javax.inject.Inject
 
 class GetSummaryUseCase @Inject constructor(
-    private val summaryRepository: SummaryRepository
+    private val summaryRepository: SummaryRepository,
+    private val tokenManager: TokenManager
 ) {
     sealed class Result {
         data class Success(
@@ -17,7 +19,10 @@ class GetSummaryUseCase @Inject constructor(
 
     suspend operator fun invoke(username: String? = null): Result {
         return try {
-            val summaries = summaryRepository.getSummaryInfoAll(username)
+            // 토큰이 있는 경우에만 username 전달
+            val token = tokenManager.getAccessToken()
+            val effectiveUsername = if (token != null) username else null
+            val summaries = summaryRepository.getSummaryInfoAll(effectiveUsername)
             Result.Success(summaries)
         } catch (e: Exception) {
             Result.Error(e)
