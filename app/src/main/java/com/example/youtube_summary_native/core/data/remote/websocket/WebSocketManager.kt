@@ -19,72 +19,67 @@ import okhttp3.WebSocketListener
 import java.util.concurrent.TimeoutException
 import javax.inject.Inject
 import javax.inject.Singleton
-
 @Singleton
 class WebSocketManager @Inject constructor(
     private val okHttpClient: OkHttpClient
 ) {
-    private var webSocket: WebSocket? = null
+    private var pingWebSocket: WebSocket? = null
+    private var summaryWebSocket: WebSocket? = null
 
-    // Flutter code에서 state를 관리하던 부분을 StateFlow로 대체
     private val _isConnected = MutableStateFlow(false)
     val isConnected = _isConnected.asStateFlow()
 
     private var isConnecting = false
-    private var retryAttempts = 0
-
-    // 메시지 수신 콜백 (type, data)
     private var messageCallback: ((String, String) -> Unit)? = null
 
-    // 코루틴 범위 (필요하다면 외부에서 주입하거나 관리)
+    // 코루틴 범위
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    companion object {
+        private const val TAG = "WebSocketManager"
+    }
+
     /**
-     * Flutter의 initialize()와 유사
-     * 이미 연결되어 있거나 연결 중이면 재시도하지 않음.
-     * 아니면 connect 시도
+     * 핑 웹소켓 초기화 및 연결
      */
     fun initialize(onMessage: (String, String) -> Unit) {
         if (_isConnected.value || isConnecting) return
         messageCallback = onMessage
         Log.d(TAG, "Initializing WebSocketManager...")
-        connectWebSocket()
+        connectPingWebSocket()
     }
 
     /**
-     * Flutter의 connectWebSocket()과 유사
+     * 핑 웹소켓 연결
      */
-    private fun connectWebSocket() {
+    private fun connectPingWebSocket() {
         if (isConnecting) {
             Log.d(TAG, "Already in connecting process")
             return
         }
 
         isConnecting = true
-        close() // 기존 연결 정리
-        Log.d(TAG, "Starting WebSocket connection...")
+        closePingWebSocket()
+        Log.d(TAG, "Starting Ping WebSocket connection...")
 
         val request = Request.Builder()
             .url("${AppConfig.WS_BASE_URL}${ApiConstants.SUMMARY_PING_ENDPOINT}")
             .build()
 
-        // OkHttp WebSocket 비동기 연결 시도
-        webSocket = okHttpClient.newWebSocket(request, createWebSocketListener())
+        pingWebSocket = okHttpClient.newWebSocket(request, createPingWebSocketListener())
 
-        // 타임아웃 처리: 5초 내에 ping-pong으로 연결확인 실패 시 실패 처리
+        // 타임아웃 처리
         scope.launch {
             try {
                 withTimeout(5000) {
-                    // 100ms 대기 후 ping 전송
                     delay(100)
                     sendPing()
-                    // ping 결과( pong ) 대기
                     while (!isConnected.value) {
                         delay(50)
                     }
                 }
             } catch (e: TimeoutException) {
-                Log.d(TAG, "WebSocket connection timeout")
+                Log.d(TAG, "Ping WebSocket connection timeout")
                 handleConnectionError()
             } finally {
                 isConnecting = false
@@ -93,10 +88,21 @@ class WebSocketManager @Inject constructor(
     }
 
     /**
-     * Flutter의 sendPing()과 유사
+     * 요약 웹소켓 연결
      */
+    fun connectSummaryWebSocket() {
+        Log.d(TAG, "Starting Summary WebSocket connection...")
+        closeSummaryWebSocket()
+
+        val request = Request.Builder()
+            .url("${AppConfig.WS_BASE_URL}${ApiConstants.SUMMARY_WEBSOCKET_ENDPOINT}")
+            .build()
+
+        summaryWebSocket = okHttpClient.newWebSocket(request, createSummaryWebSocketListener())
+    }
+
     private fun sendPing() {
-        webSocket?.let {
+        pingWebSocket?.let {
             try {
                 val message = buildJsonObject {
                     put("type", "ping")
@@ -112,80 +118,23 @@ class WebSocketManager @Inject constructor(
         }
     }
 
+    fun sendSummaryMessage(videoId: String) {
+        if (summaryWebSocket == null) {
+            Log.e(TAG, "Cannot send summary message. WebSocket is not connected.")
+            return
+        }
 
-    /**
-     * 일반 메시지 전송 메서드
-     */
-    fun sendMessage(message: String) {
-        if (_isConnected.value && webSocket != null) {
-            try {
-                Log.d(TAG, "Sending message: $message")
-                webSocket?.send(message)
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to send message: ${e.message}")
-                handleConnectionError()
-            }
-        } else {
-            Log.e(TAG, "Cannot send message. WebSocket is not connected.")
+        try {
+            Log.d(TAG, "Sending videoId to summary websocket: $videoId")
+            summaryWebSocket?.send(videoId)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to send summary message: ${e.message}")
         }
     }
 
-    /**
-     * Flutter의 retryConnection()과 유사
-     */
-    fun retryConnection() {
-        Log.d(TAG, "Manual retry requested")
-        connectWebSocket()
-        // 결과 확인 로직
-        scope.launch {
-            delay(1000)
-            if (isConnected.value) {
-                Log.d(TAG, "Manual retry succeeded: Online")
-            } else {
-                Log.d(TAG, "Manual retry failed: Still Offline")
-            }
-        }
-    }
-
-    /**
-     * Flutter의 _handleConnectionError()에 해당
-     */
-    private fun handleConnectionError() {
-        updateState(false)
-        // 여기서는 UI 상태 변경을 callback이나 Flow 통해 외부로 알릴 수 있음
-        // 자동 재시도 로직을 여기서 구현해도 되고, 수동으로 재시도 가능하게 할 수도 있다.
-    }
-
-    /**
-     * Flutter의 _updateState()에 해당
-     */
-    private fun updateState(isConnected: Boolean) {
-        if (_isConnected.value != isConnected) {
-            _isConnected.value = isConnected
-            Log.d(TAG, "State updated - connected: $isConnected")
-        }
-    }
-
-    /**
-     * Flutter의 _disposeWebSocket()에 해당
-     */
-    fun close() {
-        if (webSocket != null) {
-            Log.d(TAG, "Disposing WebSocket connection")
-            webSocket?.close(1000, "Closing connection")
-            webSocket = null
-        }
-    }
-
-    /**
-     * WebSocketListener 구현
-     */
-    private fun createWebSocketListener() = object : WebSocketListener() {
+    private fun createPingWebSocketListener() = object : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
-            super.onOpen(webSocket, response)
-            Log.d(TAG, "WebSocket connected (onOpen)")
-            // 여기서 ping을 보내고, pong 응답을 받을 때까지 대기
-            // ping은 connectWebSocket 내의 coroutine에서 처리
+            Log.d(TAG, "Ping WebSocket connected (onOpen)")
         }
 
         override fun onMessage(webSocket: WebSocket, text: String) {
@@ -195,37 +144,85 @@ class WebSocketManager @Inject constructor(
                 val data = jsonData["data"]?.toString()?.removeSurrounding("\"")
 
                 if (type == "ping" && data == "pong") {
-                    Log.d(TAG, "WebSocket connected successfully (pong received)")
+                    Log.d(TAG, "Ping WebSocket connected successfully (pong received)")
                     updateState(true)
                 }
-
-                if (type != null && data != null) {
-                    messageCallback?.invoke(type, data)
-                }
             } catch (e: Exception) {
-                Log.e(TAG, "Error processing message: ${e.message}")
+                Log.e(TAG, "Error processing ping message: ${e.message}")
             }
         }
 
-        override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-            super.onClosing(webSocket, code, reason)
-            Log.d(TAG, "WebSocket is closing: $code / $reason")
-        }
-
-        override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-            super.onClosed(webSocket, code, reason)
-            Log.d(TAG, "WebSocket connection closed: $code / $reason")
-            handleConnectionError()
-        }
-
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-            super.onFailure(webSocket, t, response)
-            Log.e(TAG, "WebSocket error: ${t.message}")
+            Log.e(TAG, "Ping WebSocket error: ${t.message}")
             handleConnectionError()
         }
     }
 
-    companion object {
-        private const val TAG = "WebSocketManager"
+    private fun createSummaryWebSocketListener() = object : WebSocketListener() {
+        override fun onOpen(webSocket: WebSocket, response: Response) {
+            Log.d(TAG, "Summary WebSocket connected")
+        }
+
+        override fun onMessage(webSocket: WebSocket, text: String) {
+            try {
+                val jsonData = Json.decodeFromString<JsonObject>(text)
+                val type = jsonData["type"]?.toString()?.removeSurrounding("\"")
+                val data = jsonData["data"]?.toString()?.removeSurrounding("\"")
+
+                if (type != null && data != null) {
+                    Log.d(TAG, "Received summary message - type: $type, data: $data")
+                    messageCallback?.invoke(type, data)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error processing summary message: ${e.message}")
+            }
+        }
+
+        override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+            Log.e(TAG, "Summary WebSocket error: ${t.message}")
+        }
+    }
+
+    private fun handleConnectionError() {
+        updateState(false)
+    }
+
+    private fun updateState(isConnected: Boolean) {
+        if (_isConnected.value != isConnected) {
+            _isConnected.value = isConnected
+            Log.d(TAG, "State updated - connected: $isConnected")
+        }
+    }
+
+    fun closePingWebSocket() {
+        pingWebSocket?.close(1000, "Closing ping connection")
+        pingWebSocket = null
+    }
+
+    fun closeSummaryWebSocket() {
+        summaryWebSocket?.close(1000, "Closing summary connection")
+        summaryWebSocket = null
+    }
+
+    fun closeAll() {
+        closePingWebSocket()
+        closeSummaryWebSocket()
+    }
+
+    fun onDataReceived(callback: (String, String) -> Unit) {
+        messageCallback = callback
+    }
+
+    fun retryConnection() {
+        Log.d(TAG, "Manual retry requested")
+        connectPingWebSocket()
+        scope.launch {
+            delay(1000)
+            if (isConnected.value) {
+                Log.d(TAG, "Manual retry succeeded: Online")
+            } else {
+                Log.d(TAG, "Manual retry failed: Still Offline")
+            }
+        }
     }
 }

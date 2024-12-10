@@ -40,6 +40,13 @@ object UseCaseModule {
         summaryRepository: SummaryRepository
     ): RequestSummaryUseCase = RequestSummaryUseCase(summaryRepository)
 
+    @Provides
+    fun provideProcessSummaryUseCase(
+        summaryRepository: SummaryRepository
+    ): ProcessSummaryUseCase {
+        return ProcessSummaryUseCase(summaryRepository)
+    }
+
     // Auth UseCase
     @Provides
     @Singleton

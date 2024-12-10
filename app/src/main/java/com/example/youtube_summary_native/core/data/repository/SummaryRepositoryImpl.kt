@@ -3,12 +3,17 @@ package com.example.youtube_summary_native.core.data.repository
 import android.util.Log
 import com.example.youtube_summary_native.core.data.local.TokenManager
 import com.example.youtube_summary_native.core.data.mapper.toDomain
+import com.example.youtube_summary_native.core.data.mapper.toDto
 import com.example.youtube_summary_native.core.data.remote.api.SummaryApi
 import com.example.youtube_summary_native.core.data.remote.websocket.WebSocketManager
 import com.example.youtube_summary_native.core.domain.model.summary.AllSummaries
+import com.example.youtube_summary_native.core.domain.model.summary.SummaryRequest
 import com.example.youtube_summary_native.core.domain.model.summary.SummaryResponse
 import com.example.youtube_summary_native.core.domain.repository.SummaryRepository
 import com.google.gson.annotations.SerializedName
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -16,6 +21,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import javax.inject.Inject
 
@@ -24,13 +30,9 @@ class SummaryRepositoryImpl @Inject constructor(
     private val webSocketManager: WebSocketManager,
     private val tokenManager: TokenManager
 ) : SummaryRepository {
-
-    // Flutter에서 _onDataReceived 콜백을 통해 데이터를 받았던 부분을
-    // MutableSharedFlow로 변환하여 외부로 알림
     private val _webSocketMessages = MutableSharedFlow<Pair<String, String>>()
     override val webSocketMessages: Flow<Pair<String, String>> = _webSocketMessages
 
-    // 만약 연결 상태도 외부로 알리고 싶다면, WebSocketManager의 isConnected StateFlow를 노출할 수 있음
     val isConnected: Flow<Boolean> = webSocketManager.isConnected
 
     private suspend fun getAuthorizationHeader(): String? {
@@ -65,9 +67,9 @@ class SummaryRepositoryImpl @Inject constructor(
 
     override suspend fun postSummaryInfo(keyUrl: String, username: String?): SummaryResponse {
         return try {
-            val request = SummaryRequest(keyUrl, username)
+            val requestDto = SummaryRequest(keyUrl, username).toDto()  // Domain 모델을 DTO로 변환
             summaryApi.postSummaryInfo(
-                request = request,
+                request = requestDto,
                 authorization = getAuthorizationHeader()
             ).toDomain()
         } catch (e: Exception) {
@@ -98,33 +100,26 @@ class SummaryRepositoryImpl @Inject constructor(
         }
     }
 
-    // Flutter 코드에서 connectToWebSocket()과 유사한 기능
-    // WebSocket 연결 및 메시지 콜백 설정
+    // WebSocket 관련 메서드 수정
     override fun connectToWebSocket() {
-        // WebSocketManager 초기화(연결) 및 메시지 수신 콜백 등록
-        webSocketManager.initialize { type, data ->
-            _webSocketMessages.tryEmit(Pair(type, data))
+        webSocketManager.connectSummaryWebSocket()
+        // 웹소켓 메시지 콜백 설정
+        webSocketManager.onDataReceived { type, data ->
+            scope.launch {
+                _webSocketMessages.emit(Pair(type, data))
+            }
         }
     }
 
-    // Flutter 코드의 sendWebSocketMessage
-    override fun sendWebSocketMessage(message: String) {
-        webSocketManager.sendMessage(message)
+    override fun sendWebSocketMessage(videoId: String) {
+        webSocketManager.sendSummaryMessage(videoId)
     }
 
-    // Flutter 코드의 closeWebSocket
     override fun closeWebSocket() {
-        webSocketManager.close()
+        webSocketManager.closeSummaryWebSocket()
     }
 
-    // Flutter 코드에서 retryConnection에 해당하는 로직이 필요하다면 추가
-    fun retryConnection() {
-        webSocketManager.retryConnection()
+    companion object {
+        private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     }
 }
-
-@Serializable
-data class SummaryRequest(
-    val url: String,
-    val username: String?
-)

@@ -4,10 +4,12 @@ import com.example.youtube_summary_native.core.data.local.entity.SummaryEntity
 import com.example.youtube_summary_native.core.data.remote.dto.AllSummariesDto
 import com.example.youtube_summary_native.core.data.remote.dto.ScriptItemDto
 import com.example.youtube_summary_native.core.data.remote.dto.SummaryInfoDto
+import com.example.youtube_summary_native.core.data.remote.dto.SummaryRequestDto
 import com.example.youtube_summary_native.core.data.remote.dto.SummaryResponseDto
 import com.example.youtube_summary_native.core.domain.model.summary.AllSummaries
 import com.example.youtube_summary_native.core.domain.model.summary.ScriptItem
 import com.example.youtube_summary_native.core.domain.model.summary.SummaryInfo
+import com.example.youtube_summary_native.core.domain.model.summary.SummaryRequest
 import com.example.youtube_summary_native.core.domain.model.summary.SummaryResponse
 
 // DTO to Domain
@@ -73,5 +75,12 @@ fun SummaryInfo.toEntity(): SummaryEntity {
         thumbnailUrl = thumbnailUrl,
         status = status,
         createdAt = createdAt
+    )
+}
+
+fun SummaryRequest.toDto(): SummaryRequestDto {
+    return SummaryRequestDto(
+        url = url,
+        username = username
     )
 }
