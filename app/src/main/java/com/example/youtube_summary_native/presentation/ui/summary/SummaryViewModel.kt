@@ -7,6 +7,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.youtube_summary_native.core.data.remote.dto.ScriptItemDto
 import com.example.youtube_summary_native.core.domain.model.summary.ScriptItem
+import com.example.youtube_summary_native.core.domain.model.summary.SummaryInfo
+import com.example.youtube_summary_native.core.domain.model.summary.SummaryResponse
 import com.example.youtube_summary_native.core.domain.repository.SummaryRepository
 import com.example.youtube_summary_native.core.domain.usecase.summary.GetSummaryUseCase
 import com.example.youtube_summary_native.core.domain.usecase.summary.ProcessSummaryUseCase
@@ -14,6 +16,7 @@ import com.example.youtube_summary_native.presentation.ui.summary.state.ShareSta
 import com.example.youtube_summary_native.presentation.ui.summary.state.SummaryScreenState
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -37,72 +40,92 @@ class SummaryViewModel @Inject constructor(
     private val _currentVideoId = MutableStateFlow(videoId)
     private val currentVideoId = _currentVideoId.asStateFlow()
 
-
+    private var summaryJob: Job? = null
 
     init {
         Log.d(TAG, "Initializing SummaryViewModel with videoId: $videoId")
         _uiState.update { it.copy(videoId = videoId) }
-        _currentVideoId.value = videoId  // 초기 videoId 설정
-
-        // 요약 처리 시작 및 웹소켓 메시지 수신
         initializeSummaryProcess()
-        loadSummaryData(videoId)
-        loadAllSummaries()
     }
 
+
     private fun initializeSummaryProcess() {
-        viewModelScope.launch {
+        summaryJob?.cancel()
+        summaryJob = viewModelScope.launch {
             try {
                 _uiState.update { it.copy(isLoading = true) }
 
-                val url = "https://www.youtube.com/watch?v=$videoId"
-
-                // 요약 프로세스를 별도의 코루틴에서 실행
-                launch {
-                    processSummaryUseCase.webSocketMessages.collect { (type, data) ->
-                        when (type) {
-                            "summary" -> {
-                                _uiState.update { it.copy(
-                                    summaryContent = data,
-                                    isLoading = true
-                                ) }
-                            }
-                            "complete" -> {
-                                _uiState.update { it.copy(isLoading = false) }
-                                loadSummaryData(videoId)
-                            }
-                        }
+                // 1. 기존 요약 확인
+                when (val result = getSummaryUseCase.getSummaryById(videoId)) {
+                    is GetSummaryUseCase.DetailResult.Success -> {
+                        handleExistingSummary(result.summaryResponse)
                     }
+                    is GetSummaryUseCase.DetailResult.Error -> {
+                        requestNewSummary()
+                    }
+                    GetSummaryUseCase.DetailResult.Loading -> Unit
                 }
 
-                // 요약 처리 시작
-                when (val result = processSummaryUseCase(url, videoId)) {
-                    is ProcessSummaryUseCase.Result.Success -> {
-                        _uiState.update { state ->
-                            state.copy(
-                                videoId = videoId,
-                                title = result.summaryResponse.summaryInfo.title,
-                                summaryContent = "요약을 준비하고 있습니다..." // 초기 메시지
-                            )
-                        }
-                    }
-                    is ProcessSummaryUseCase.Result.Error -> {
-                        _uiState.update { it.copy(
-                            isLoading = false,
-                            error = result.exception.message
-                        ) }
-                    }
-                    ProcessSummaryUseCase.Result.Loading -> {
-                        _uiState.update { it.copy(isLoading = true) }
-                    }
-                }
             } catch (e: Exception) {
                 Log.e(TAG, "Error in summary process", e)
                 _uiState.update { it.copy(
                     isLoading = false,
                     error = e.message
-                ) }
+                )}
             }
+        }
+    }
+
+    private suspend fun handleExistingSummary(response: SummaryResponse) {
+        val summaryInfo = response.summaryInfo
+        if (summaryInfo.summary.isNotEmpty()) {
+            // 이미 요약이 있는 경우
+            updateUiWithSummary(summaryInfo)
+        } else {
+            // 요약이 없는 경우 새로 요청
+            requestNewSummary()
+        }
+    }
+
+    private suspend fun requestNewSummary() {
+        val url = "https://www.youtube.com/watch?v=$videoId"
+        processSummaryUseCase(url, videoId).collect { result ->
+            when (result) {
+                is ProcessSummaryUseCase.Result.Loading -> {
+                    _uiState.update { it.copy(
+                        isLoading = true,
+                        summaryContent = "요약을 준비하고 있습니다..."
+                    )}
+                }
+                is ProcessSummaryUseCase.Result.Success -> {
+                    updateUiWithSummary(result.summaryResponse.summaryInfo)
+                }
+                is ProcessSummaryUseCase.Result.Error -> {
+                    _uiState.update { it.copy(
+                        isLoading = false,
+                        error = result.exception.message
+                    )}
+                }
+                is ProcessSummaryUseCase.Result.Timeout -> {
+                    _uiState.update { it.copy(
+                        isLoading = false,
+                        error = "요약 시간이 초과되었습니다. 다시 시도해주세요."
+                    )}
+                }
+            }
+        }
+    }
+
+    private fun updateUiWithSummary(summaryInfo: SummaryInfo) {
+        val formattedScript = parseAndFormatScript(summaryInfo.rawScript)
+        _uiState.update { state ->
+            state.copy(
+                isLoading = false,
+                title = summaryInfo.title,
+                summaryContent = summaryInfo.summary,
+                scriptContent = formattedScript,
+                error = null
+            )
         }
     }
 
@@ -258,10 +281,10 @@ class SummaryViewModel @Inject constructor(
         }
     }
 
-    override fun onCleared() {
-        super.onCleared()
-        processSummaryUseCase.closeWebSocket()
-    }
+//    override fun onCleared() {
+//        super.onCleared()
+//        processSummaryUseCase.closeWebSocket()
+//    }
 
     // Caption 관련 기능
     fun toggleCaptionVisibility() {
@@ -282,6 +305,11 @@ class SummaryViewModel @Inject constructor(
                 )
             )
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        summaryJob?.cancel()
     }
 
     // Tab 관련 기능
