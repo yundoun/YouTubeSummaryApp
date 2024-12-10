@@ -23,7 +23,8 @@ import javax.inject.Inject
 @HiltViewModel
 class SummaryViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    private val getSummaryUseCase: GetSummaryUseCase
+    private val getSummaryUseCase: GetSummaryUseCase,
+    private val summaryRepository: SummaryRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SummaryScreenState())
@@ -50,34 +51,28 @@ class SummaryViewModel @Inject constructor(
             Log.d(TAG, "Starting to load summary data for video: $targetVideoId")
             _uiState.update { it.copy(isLoading = true) }
             try {
-                when (val result = getSummaryUseCase.getSummaryById(targetVideoId)) {
-                    is GetSummaryUseCase.DetailResult.Success -> {
-                        val summaryInfo = result.summaryResponse.summaryInfo
-                        val formattedScript = parseAndFormatScript(summaryInfo.rawScript)
-                        _uiState.update { state ->
-                            state.copy(
-                                isLoading = false,
-                                videoId = targetVideoId,
-                                title = summaryInfo.title,
-                                summaryContent = if (summaryInfo.summary.startsWith("Error:")) {
-                                    Log.w(TAG, "Summary contains error: ${summaryInfo.summary}")
-                                    ""
-                                } else summaryInfo.summary,
-                                scriptContent = formattedScript,
-                                error = null
-                            )
-                        }
-                    }
-                    is GetSummaryUseCase.DetailResult.Error -> {
-                        _uiState.update { it.copy(
-                            isLoading = false,
-                            error = result.exception.message
-                        ) }
-                    }
-                    GetSummaryUseCase.DetailResult.Loading -> {
-                        _uiState.update { it.copy(isLoading = true) }
-                    }
+                val response = summaryRepository.getSummaryInfo(targetVideoId)
+//                Log.d(TAG, "Received response: $response")
+
+                val formattedScript = response.summaryInfo.rawScript.let { script ->
+                    Log.d(TAG, "Processing raw script: $script")
+                    parseAndFormatScript(script)
                 }
+
+                _uiState.update { state ->
+                    state.copy(
+                        isLoading = false,
+                        videoId = targetVideoId,  // videoId 업데이트 추가
+                        title = response.summaryInfo.title,
+                        summaryContent = if (response.summaryInfo.summary.startsWith("Error:")) {
+                            Log.w(TAG, "Summary contains error: ${response.summaryInfo.summary}")
+                            ""
+                        } else response.summaryInfo.summary,
+                        scriptContent = formattedScript,
+                        error = null
+                    )
+                }
+                Log.d(TAG, "Updated UI state successfully")
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading summary data", e)
                 _uiState.update { it.copy(
@@ -97,21 +92,13 @@ class SummaryViewModel @Inject constructor(
     private fun loadAllSummaries() {
         viewModelScope.launch {
             try {
-                when (val result = getSummaryUseCase()) {
-                    is GetSummaryUseCase.Result.Success -> {
-                        _uiState.update { it.copy(
-                            summaryList = result.summaries.summaryList
-                        ) }
-                    }
-                    is GetSummaryUseCase.Result.Error -> {
-                        Log.e(TAG, "Error loading all summaries", result.exception)
-                    }
-                    GetSummaryUseCase.Result.Loading -> {
-                        _uiState.update { it.copy(isLoading = true) }
-                    }
-                }
+                val allSummaries = summaryRepository.getSummaryInfoAll(null)
+                _uiState.update { it.copy(
+                    summaryList = allSummaries.summaryList
+                ) }
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading all summaries", e)
+                // 에러 처리는 현재 상태를 유지하고 로그만 남깁니다
             }
         }
     }
