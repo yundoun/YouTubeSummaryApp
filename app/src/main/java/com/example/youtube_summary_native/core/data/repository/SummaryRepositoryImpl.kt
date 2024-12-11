@@ -1,5 +1,6 @@
 package com.example.youtube_summary_native.core.data.repository
 
+import android.content.ContentValues.TAG
 import android.util.Log
 import com.example.youtube_summary_native.core.data.local.TokenManager
 import com.example.youtube_summary_native.core.data.mapper.toDomain
@@ -57,12 +58,19 @@ class SummaryRepositoryImpl @Inject constructor(
 
     override suspend fun postSummaryInfo(keyUrl: String, username: String?): SummaryResponse {
         return try {
+            Log.d(TAG, "Starting POST request with URL: $keyUrl")
             val request = SummaryRequest(keyUrl, username)
-            summaryApi.postSummaryInfo(
+            Log.d(TAG, "Request body: $request")
+
+            val response = summaryApi.postSummaryInfo(
                 request = request,
                 authorization = getAuthorizationHeader()
-            ).toDomain()
+            )
+            Log.d(TAG, "POST request successful")
+
+            response.toDomain()
         } catch (e: Exception) {
+            Log.e(TAG, "Error in postSummaryInfo", e)
             throw Exception("Failed to post summary info: ${e.message}")
         }
     }
@@ -90,8 +98,8 @@ class SummaryRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun connectToWebSocket() {
-        webSocketManager.connect { message ->  // 콜백 시그니처 변경
+    override fun connectToWebSocket(videoId: String) {
+        webSocketManager.connect(videoId) { message ->
             _webSocketMessages.tryEmit(message)
         }
     }

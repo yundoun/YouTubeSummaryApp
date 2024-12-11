@@ -22,6 +22,7 @@ sealed class WebSocketMessage {
     data class Summary(val content: String) : WebSocketMessage()
     object Complete : WebSocketMessage()
     data class Error(val message: String) : WebSocketMessage()
+    object Connected : WebSocketMessage()  // 새로 추가
 }
 
 @Singleton
@@ -31,26 +32,12 @@ class WebSocketManager @Inject constructor(
     private var webSocket: WebSocket? = null
     private var messageCallback: ((WebSocketMessage) -> Unit)? = null
     private var isConnected = false
-    private var pingJob: Job? = null
+    private var videoId: String? = null // videoId 저장용 변수 추가
 
-    fun connect(onMessage: (WebSocketMessage) -> Unit) {
-        closeCurrentConnection()  // 기존 연결 정리
-
-        Log.d(TAG, "Attempting to connect WebSocket")
-        if (isConnected) {
-            Log.d(TAG, "WebSocket is already connected")
-            return
-        }
-
-        // 연결 상태 확인을 위한 ping
-        pingJob = CoroutineScope(Dispatchers.IO).launch {
-            while (isActive) {
-                delay(30000)  // 30초마다
-                if (isConnected) {
-                    webSocket?.send("{\"type\":\"ping\"}")
-                }
-            }
-        }
+    fun connect(videoId: String, onMessage: (WebSocketMessage) -> Unit) { // videoId 파라미터 추가
+        closeCurrentConnection()
+        this.videoId = videoId // videoId 저장
+        Log.d(TAG, "Attempting to connect WebSocket for video: $videoId")
 
         messageCallback = onMessage
         val request = Request.Builder()
@@ -58,16 +45,23 @@ class WebSocketManager @Inject constructor(
             .build()
 
         webSocket = okHttpClient.newWebSocket(request, createWebSocketListener())
-        isConnected = true
-        Log.d(TAG, "WebSocket connection initiated")
     }
 
     private fun createWebSocketListener() = object : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
             Log.d(TAG, "WebSocket connection opened")
+            messageCallback?.let { callback ->
+                // Connected 메시지를 먼저 보내고
+                callback(WebSocketMessage.Connected)
+
+                // 그 다음 video ID를 전송
+                videoId?.let { id ->
+                    Log.d(TAG, "Sending video ID: $id")
+                    webSocket.send(id)
+                }
+            }
             isConnected = true
         }
-
         override fun onMessage(webSocket: WebSocket, text: String) {
             try {
                 val jsonData = Json.decodeFromString<JsonObject>(text)
@@ -123,7 +117,6 @@ class WebSocketManager @Inject constructor(
     }
 
     private fun closeCurrentConnection() {
-        pingJob?.cancel()
         webSocket?.close(1000, "Closing previous connection")
         webSocket = null
         messageCallback = null

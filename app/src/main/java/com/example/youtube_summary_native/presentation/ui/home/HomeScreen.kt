@@ -153,7 +153,7 @@ fun HomeScreen(
                                 isOfflineMode = isOfflineMode,
                                 onStartSummaryClick = {
                                     homeViewModel.requestSummary(
-                                        url = "${ApiConstants.DEFAULT_YOUTUBE_URL}?v=${uiState.videoId}",
+                                        url = "${ApiConstants.DEFAULT_YOUTUBE_URL}/watch?v=${uiState.videoId}",
                                         videoId = uiState.videoId
                                     )
                                     onNavigateToSummary(uiState.videoId)

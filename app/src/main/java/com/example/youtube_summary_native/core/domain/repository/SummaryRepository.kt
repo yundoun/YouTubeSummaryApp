@@ -15,7 +15,7 @@ interface SummaryRepository {
     suspend fun deleteSummaryInfo(videoId: String, username: String? = null): String
     suspend fun deleteSummaryInfoAll(): String
 
-    fun connectToWebSocket()
+    fun connectToWebSocket(videoId: String)
     fun sendWebSocketMessage(message: String)
     fun closeWebSocket()
 }
