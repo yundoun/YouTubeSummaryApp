@@ -10,6 +10,9 @@ import com.example.youtube_summary_native.core.domain.usecase.summary.DeleteSumm
 import com.example.youtube_summary_native.core.domain.usecase.summary.GetSummaryUseCase
 import com.example.youtube_summary_native.core.domain.usecase.summary.RequestSummaryUseCase
 import com.example.youtube_summary_native.core.presentation.auth.AuthViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flowOn
 import com.example.youtube_summary_native.presentation.ui.auth.state.AuthState
 import com.example.youtube_summary_native.util.NetworkMonitor
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -146,24 +149,39 @@ class HomeViewModel @Inject constructor(
             try {
                 _uiState.update { it.copy(isLoading = true) }
 
-                when (val result = requestSummaryUseCase(
+                requestSummaryUseCase(
                     url = url,
                     videoId = videoId,
-                    username = uiState.value.userInfo?.username // 로그인된 사용자의 username 전달
-                )) {
-                    is RequestSummaryUseCase.Result.Success -> {
+                    username = uiState.value.userInfo?.username
+                ).flowOn(Dispatchers.IO)
+                    .catch { e ->
                         _uiState.update { it.copy(isLoading = false) }
-                        Log.d("HomeViewModel", "Summary request successful")
-                        initializeHomeScreen()
+                        Log.e("HomeViewModel", "Summary request failed", e)
                     }
-                    is RequestSummaryUseCase.Result.Error -> {
-                        _uiState.update { it.copy(isLoading = false) }
-                        Log.e("HomeViewModel", "Summary request failed", result.exception)
+                    .collect { result ->
+                        when (result) {
+                            is RequestSummaryUseCase.Result.Loading -> {
+                                _uiState.update { it.copy(isLoading = true) }
+                            }
+                            is RequestSummaryUseCase.Result.Success -> {
+                                _uiState.update { it.copy(isLoading = true) }
+                                Log.d("HomeViewModel", "Summary request successful")
+                            }
+                            is RequestSummaryUseCase.Result.Progress -> {
+                                // 진행 상태일 때는 loading 상태만 유지
+                                _uiState.update { it.copy(isLoading = true) }
+                            }
+                            is RequestSummaryUseCase.Result.Complete -> {
+                                _uiState.update { it.copy(isLoading = false) }
+                                // 요약이 완료되면 전체 데이터를 새로고침
+                                initializeHomeScreen()
+                            }
+                            is RequestSummaryUseCase.Result.Error -> {
+                                _uiState.update { it.copy(isLoading = false) }
+                                Log.e("HomeViewModel", "Summary request failed", result.exception)
+                            }
+                        }
                     }
-                    is RequestSummaryUseCase.Result.Loading -> {
-                        _uiState.update { it.copy(isLoading = true) }
-                    }
-                }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false) }
                 Log.e("HomeViewModel", "Failed to request summary", e)

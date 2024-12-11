@@ -5,6 +5,7 @@ import com.example.youtube_summary_native.core.data.local.TokenManager
 import com.example.youtube_summary_native.core.data.mapper.toDomain
 import com.example.youtube_summary_native.core.data.remote.api.SummaryApi
 import com.example.youtube_summary_native.core.data.remote.websocket.WebSocketManager
+import com.example.youtube_summary_native.core.data.remote.websocket.WebSocketMessage
 import com.example.youtube_summary_native.core.domain.model.summary.AllSummaries
 import com.example.youtube_summary_native.core.domain.model.summary.SummaryResponse
 import com.example.youtube_summary_native.core.domain.repository.SummaryRepository
@@ -20,8 +21,8 @@ class SummaryRepositoryImpl @Inject constructor(
     private val tokenManager: TokenManager
 ) : SummaryRepository {
 
-    private val _webSocketMessages = MutableSharedFlow<Pair<String, String>>()
-    override val webSocketMessages: Flow<Pair<String, String>> = _webSocketMessages
+    private val _webSocketMessages = MutableSharedFlow<WebSocketMessage>()  // 타입 변경
+    override val webSocketMessages: Flow<WebSocketMessage> = _webSocketMessages
 
     private suspend fun getAuthorizationHeader(): String? {
         val token = tokenManager.getAccessToken()
@@ -90,8 +91,8 @@ class SummaryRepositoryImpl @Inject constructor(
     }
 
     override fun connectToWebSocket() {
-        webSocketManager.connect { type, data ->
-            _webSocketMessages.tryEmit(Pair(type, data))
+        webSocketManager.connect { message ->  // 콜백 시그니처 변경
+            _webSocketMessages.tryEmit(message)
         }
     }
 
@@ -103,7 +104,6 @@ class SummaryRepositoryImpl @Inject constructor(
         webSocketManager.close()
     }
 }
-
 
 @Serializable
 data class SummaryRequest(
