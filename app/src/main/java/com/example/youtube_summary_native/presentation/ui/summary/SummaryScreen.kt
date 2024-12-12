@@ -1,5 +1,7 @@
 package com.example.youtube_summary_native.presentation.ui.summary
 
+import android.content.ContentValues.TAG
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -54,6 +56,7 @@ fun SummaryScreen(
     viewModel: SummaryViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    Log.d(TAG, "UI State Updated - Summary Content: ${uiState.summaryContent}")
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.dp
     val isSmallWidth = screenWidth < 600.dp

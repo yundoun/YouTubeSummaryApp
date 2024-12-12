@@ -1,16 +1,21 @@
 package com.example.youtube_summary_native.core.data.repository
 
+import android.content.ContentValues.TAG
 import android.util.Log
 import com.example.youtube_summary_native.core.data.local.TokenManager
 import com.example.youtube_summary_native.core.data.mapper.toDomain
 import com.example.youtube_summary_native.core.data.remote.api.SummaryApi
 import com.example.youtube_summary_native.core.data.remote.websocket.WebSocketManager
+import com.example.youtube_summary_native.core.data.remote.websocket.WebSocketMessage
 import com.example.youtube_summary_native.core.domain.model.summary.AllSummaries
 import com.example.youtube_summary_native.core.domain.model.summary.SummaryResponse
 import com.example.youtube_summary_native.core.domain.repository.SummaryRepository
 import com.google.gson.annotations.SerializedName
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import javax.inject.Inject
 
@@ -20,8 +25,8 @@ class SummaryRepositoryImpl @Inject constructor(
     private val tokenManager: TokenManager
 ) : SummaryRepository {
 
-    private val _webSocketMessages = MutableSharedFlow<Pair<String, String>>()
-    override val webSocketMessages: Flow<Pair<String, String>> = _webSocketMessages
+    private val _webSocketMessages = MutableSharedFlow<WebSocketMessage>()  // 타입 변경
+    override val webSocketMessages: Flow<WebSocketMessage> = _webSocketMessages
 
     private suspend fun getAuthorizationHeader(): String? {
         val token = tokenManager.getAccessToken()
@@ -56,12 +61,19 @@ class SummaryRepositoryImpl @Inject constructor(
 
     override suspend fun postSummaryInfo(keyUrl: String, username: String?): SummaryResponse {
         return try {
+            Log.d(TAG, "Starting POST request with URL: $keyUrl")
             val request = SummaryRequest(keyUrl, username)
-            summaryApi.postSummaryInfo(
+            Log.d(TAG, "Request body: $request")
+
+            val response = summaryApi.postSummaryInfo(
                 request = request,
                 authorization = getAuthorizationHeader()
-            ).toDomain()
+            )
+            Log.d(TAG, "POST request successful")
+
+            response.toDomain()
         } catch (e: Exception) {
+            Log.e(TAG, "Error in postSummaryInfo", e)
             throw Exception("Failed to post summary info: ${e.message}")
         }
     }
@@ -89,9 +101,12 @@ class SummaryRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun connectToWebSocket() {
-        webSocketManager.connect { type, data ->
-            _webSocketMessages.tryEmit(Pair(type, data))
+    override fun connectToWebSocket(videoId: String) {
+        webSocketManager.connect(videoId) { message ->
+            // tryEmit 대신 emit을 사용하기 위해 코루틴 스코프 추가
+            CoroutineScope(Dispatchers.IO).launch {
+                _webSocketMessages.emit(message)
+            }
         }
     }
 
@@ -103,7 +118,6 @@ class SummaryRepositoryImpl @Inject constructor(
         webSocketManager.close()
     }
 }
-
 
 @Serializable
 data class SummaryRequest(

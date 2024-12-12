@@ -13,5 +13,7 @@ data class SummaryScreenState(
     val isDrawerOpen: Boolean = false,
     val captionState: CaptionState = CaptionState(),
     val shareState: ShareState = ShareState(),
-    val summaryList: List<SummaryInfo> = emptyList() // 추가
+    val summaryList: List<SummaryInfo> = emptyList(),
+    val progressContent: String = "",    // 추가: 실시간 요약 진행 내용
+    val isProgressing: Boolean = false   // 추가: 요약 진행 중 여부
 )

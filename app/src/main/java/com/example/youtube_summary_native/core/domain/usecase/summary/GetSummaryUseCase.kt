@@ -1,9 +1,12 @@
 package com.example.youtube_summary_native.core.domain.usecase.summary
 
 import com.example.youtube_summary_native.core.data.local.TokenManager
+import com.example.youtube_summary_native.core.data.remote.websocket.WebSocketMessage
 import com.example.youtube_summary_native.core.domain.model.summary.AllSummaries
 import com.example.youtube_summary_native.core.domain.model.summary.SummaryResponse
 import com.example.youtube_summary_native.core.domain.repository.SummaryRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import javax.inject.Inject
 
 class GetSummaryUseCase @Inject constructor(
@@ -20,8 +23,9 @@ class GetSummaryUseCase @Inject constructor(
     // 단일 조회를 위한 Result
     sealed class DetailResult {
         data class Success(val summaryResponse: SummaryResponse) : DetailResult()
+        data class Progress(val content: String) : DetailResult()  // 추가
         data class Error(val exception: Exception) : DetailResult()
-        data object Loading : DetailResult()
+        object Loading : DetailResult()
     }
 
     // 전체 목록 조회
@@ -36,13 +40,49 @@ class GetSummaryUseCase @Inject constructor(
         }
     }
 
-    // 단일 조회
-    suspend fun getSummaryById(videoId: String): DetailResult {
+    // 전체 스크립트만 가져오는 함수 추가
+    suspend fun getFullScript(videoId: String): DetailResult {
         return try {
             val summary = summaryRepository.getSummaryInfo(videoId)
             DetailResult.Success(summary)
         } catch (e: Exception) {
             DetailResult.Error(e)
+        }
+    }
+
+    // 요약 스크립트를 실시간으로 가져오는 함수
+    suspend fun getSummaryById(videoId: String): Flow<DetailResult> = flow {
+        emit(DetailResult.Loading)
+
+        try {
+            // 초기 요약 정보 가져오기
+            val initialSummary = summaryRepository.getSummaryInfo(videoId)
+
+            // 초기 전체 스크립트 emit (summary는 비어있을 수 있음)
+            emit(DetailResult.Success(initialSummary))
+
+            // WebSocket 연결
+            summaryRepository.connectToWebSocket(videoId)
+
+            // WebSocket 메시지 구독 - 요약 스크립트만 처리
+            summaryRepository.webSocketMessages
+                .collect { message ->
+                    when (message) {
+                        is WebSocketMessage.Summary -> {
+                            emit(DetailResult.Progress(message.content))
+                        }
+                        is WebSocketMessage.Complete -> {
+                            val finalSummary = summaryRepository.getSummaryInfo(videoId)
+                            emit(DetailResult.Success(finalSummary))
+                        }
+                        is WebSocketMessage.Error -> {
+                            emit(DetailResult.Error(Exception(message.message)))
+                        }
+                        else -> {}
+                    }
+                }
+        } catch (e: Exception) {
+            emit(DetailResult.Error(e))
         }
     }
 }
