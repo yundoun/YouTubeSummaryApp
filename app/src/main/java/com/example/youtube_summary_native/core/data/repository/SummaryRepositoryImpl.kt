@@ -11,8 +11,11 @@ import com.example.youtube_summary_native.core.domain.model.summary.AllSummaries
 import com.example.youtube_summary_native.core.domain.model.summary.SummaryResponse
 import com.example.youtube_summary_native.core.domain.repository.SummaryRepository
 import com.google.gson.annotations.SerializedName
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import javax.inject.Inject
 
@@ -100,7 +103,10 @@ class SummaryRepositoryImpl @Inject constructor(
 
     override fun connectToWebSocket(videoId: String) {
         webSocketManager.connect(videoId) { message ->
-            _webSocketMessages.tryEmit(message)
+            // tryEmit 대신 emit을 사용하기 위해 코루틴 스코프 추가
+            CoroutineScope(Dispatchers.IO).launch {
+                _webSocketMessages.emit(message)
+            }
         }
     }
 

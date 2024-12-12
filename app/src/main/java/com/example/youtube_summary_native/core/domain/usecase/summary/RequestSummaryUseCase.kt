@@ -33,7 +33,7 @@ class RequestSummaryUseCase @Inject constructor(
     }
 
     // Flow를 WebSocketMessage 타입으로 변경
-    val webSocketMessages: Flow<WebSocketMessage> = summaryRepository.webSocketMessages
+    private val webSocketMessages: Flow<WebSocketMessage> = summaryRepository.webSocketMessages
 
     suspend operator fun invoke(
         url: String,
@@ -43,35 +43,16 @@ class RequestSummaryUseCase @Inject constructor(
         emit(Result.Loading)
 
         try {
-            // 1. WebSocket 연결
-            Log.d(TAG, "Starting WebSocket connection")
-            summaryRepository.connectToWebSocket(videoId)
-
-            // 2. Connected 메시지 대기
-            var isWebSocketConnected = false
-            withTimeout(5000) { // 5초 타임아웃
-                webSocketMessages.collect { message ->
-                    when (message) {
-                        is WebSocketMessage.Connected -> {
-                            Log.d(TAG, "WebSocket Connected message received")
-                            isWebSocketConnected = true
-                            return@collect  // Connected 메시지를 받으면 collect 종료
-                        }
-                        else -> { }
-                    }
-                }
-            }
-
-            if (!isWebSocketConnected) {
-                throw Exception("WebSocket connection timeout")
-            }
-
-            // 3. HTTP POST 요청 전송
+            // 1. HTTP POST 요청 먼저 전송
             Log.d(TAG, "Starting HTTP POST request")
             val response = summaryRepository.postSummaryInfo(url, username)
             Log.d(TAG, "HTTP POST request completed")
 
-            // 4. WebSocket으로 진행상황 모니터링
+            // 2. WebSocket 연결
+            Log.d(TAG, "Starting WebSocket connection")
+            summaryRepository.connectToWebSocket(videoId)
+
+            // 3. WebSocket으로 진행상황 모니터링
             Log.d(TAG, "Starting progress monitoring")
             webSocketMessages.collect { message ->
                 when (message) {

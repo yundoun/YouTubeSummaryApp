@@ -22,7 +22,8 @@ sealed class WebSocketMessage {
     data class Summary(val content: String) : WebSocketMessage()
     object Complete : WebSocketMessage()
     data class Error(val message: String) : WebSocketMessage()
-    object Connected : WebSocketMessage()  // 새로 추가
+    object Connected : WebSocketMessage()
+    object Ping : WebSocketMessage()  // 추가
 }
 
 @Singleton
@@ -78,6 +79,12 @@ class WebSocketManager @Inject constructor(
                     "complete" -> {
                         Log.d(TAG, "Processing complete message")
                         messageCallback?.invoke(WebSocketMessage.Complete)
+                    }
+                    "ping" -> {
+                        Log.d(TAG, "Processing ping message")
+                        messageCallback?.invoke(WebSocketMessage.Ping)
+                        // 서버로 pong 응답을 보낼 수도 있습니다
+                        webSocket.send("""{"type":"pong","data":"pong"}""")
                     }
                     else -> {
                         Log.d(TAG, "Unknown message type: $type")
