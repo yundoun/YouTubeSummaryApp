@@ -1,6 +1,7 @@
 package com.example.youtube_summary_native.presentation.ui.summary
 
 import android.annotation.SuppressLint
+import android.content.ContentValues.TAG
 import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -44,100 +45,90 @@ class SummaryViewModel @Inject constructor(
         Log.d(TAG, "Initializing SummaryViewModel with videoId: $videoId")
         if (videoId.isNotEmpty()) {
             _uiState.update { it.copy(videoId = videoId) }
+            // 전체 스크립트와 요약 스크립트를 동시에 로드
+            loadFullScript(videoId)
             loadSummaryData(videoId)
         }
     }
 
-    private fun loadSummaryData(videoId: String) {
-        Log.d(TAG, "Starting to load summary data for video: $videoId")
+    // 전체 스크립트 로드
+    private fun loadFullScript(videoId: String) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
             try {
-                when (val result = getSummaryUseCase.getSummaryById(videoId)) {
+                when (val result = getSummaryUseCase.getFullScript(videoId)) {
                     is GetSummaryUseCase.DetailResult.Success -> {
                         _uiState.update { state ->
                             state.copy(
-                                isLoading = false,
                                 title = result.summaryResponse.summaryInfo.title,
-                                summaryContent = result.summaryResponse.summaryInfo.summary,
                                 scriptContent = result.summaryResponse.summaryInfo.rawScript
                             )
                         }
                     }
                     is GetSummaryUseCase.DetailResult.Error -> {
-                        _uiState.update { it.copy(
-                            isLoading = false,
-                            error = result.exception.message
-                        )}
+                        _uiState.update { state ->
+                            state.copy(error = result.exception.message)
+                        }
                     }
-                    is GetSummaryUseCase.DetailResult.Loading -> {
-                        _uiState.update { it.copy(isLoading = true) }
-                    }
+                    else -> {} // Loading, Progress 상태는 무시
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(
-                    isLoading = false,
-                    error = e.message
-                )}
+                _uiState.update { it.copy(error = e.message) }
             }
         }
     }
 
-    fun requestSummary(url: String) {
+    // 요약 스크립트 실시간 로드
+    private fun loadSummaryData(videoId: String) {
         summaryJob?.cancel()
+
         summaryJob = viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
             try {
-                requestSummaryUseCase(
-                    url = url,
-                    videoId = _uiState.value.videoId
-                ).flowOn(Dispatchers.IO)
-                    .catch { e ->
-                        _uiState.update { it.copy(
-                            isLoading = false,
-                            error = e.message
-                        )}
-                    }
+                getSummaryUseCase.getSummaryById(videoId)
                     .collect { result ->
                         when (result) {
-                            is RequestSummaryUseCase.Result.Loading -> {
+                            is GetSummaryUseCase.DetailResult.Loading -> {
                                 _uiState.update { it.copy(isLoading = true) }
                             }
-                            is RequestSummaryUseCase.Result.Success -> {
+                            is GetSummaryUseCase.DetailResult.Progress -> {
                                 _uiState.update { state ->
                                     state.copy(
-                                        title = result.summaryResponse.summaryInfo.title
+                                        isLoading = false,
+                                        isProgressing = true,
+                                        progressContent = result.content,
+                                        summaryContent = result.content
                                     )
                                 }
                             }
-                            is RequestSummaryUseCase.Result.Progress -> {
+                            is GetSummaryUseCase.DetailResult.Success -> {
                                 _uiState.update { state ->
                                     state.copy(
-                                        summaryContent = result.content,
-                                        isLoading = true
+                                        isLoading = false,
+                                        isProgressing = false,
+                                        summaryContent = result.summaryResponse.summaryInfo.summary
                                     )
                                 }
                             }
-                            is RequestSummaryUseCase.Result.Complete -> {
-                                _uiState.update { it.copy(isLoading = false) }
-                                loadSummaryData(_uiState.value.videoId)
-                            }
-                            is RequestSummaryUseCase.Result.Error -> {
-                                _uiState.update { it.copy(
-                                    isLoading = false,
-                                    error = result.exception.message
-                                )}
+                            is GetSummaryUseCase.DetailResult.Error -> {
+                                _uiState.update { state ->
+                                    state.copy(
+                                        isLoading = false,
+                                        isProgressing = false,
+                                        error = result.exception.message
+                                    )
+                                }
                             }
                         }
                     }
             } catch (e: Exception) {
                 _uiState.update { it.copy(
                     isLoading = false,
+                    isProgressing = false,
                     error = e.message
                 )}
             }
         }
     }
+
 
 
     override fun onCleared() {
@@ -163,14 +154,6 @@ class SummaryViewModel @Inject constructor(
             youtubePlayer?.loadVideo(newVideoId, 0f)
             loadSummaryData(newVideoId)
         }
-    }
-
-    @SuppressLint("DefaultLocale")
-    private fun formatSeconds(seconds: Double): String {
-        val hours = seconds.toInt() / 3600
-        val minutes = (seconds.toInt() % 3600) / 60
-        val secs = seconds.toInt() % 60
-        return String.format("%02d:%02d:%02d", hours, minutes, secs)
     }
 
     fun onPlayerReady(player: YouTubePlayer) {
